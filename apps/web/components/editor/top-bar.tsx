@@ -3,6 +3,7 @@
 import {
   Download,
   Eye,
+  FolderX,
   PanelLeft,
   PanelRight,
   Rows3,
@@ -77,6 +78,18 @@ export function TopBar() {
           {count} photo{count === 1 ? "" : "s"}
           {selectedCount > 1 ? ` · ${selectedCount} selected` : ""}
         </span>
+      )}
+
+      {count > 0 && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => useCatalogStore.getState().clear()}
+          aria-label="Close folder"
+          title="Close folder — removes every photo from the library, doesn't touch the files on disk"
+        >
+          <FolderX size={15} />
+        </Button>
       )}
 
       {count > 0 && <ApplyToAllButton />}

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { AlertTriangle, FileQuestion } from "lucide-react";
+import { AlertTriangle, FileQuestion, X } from "lucide-react";
 import { cn } from "@lrl/ui";
 import { useCatalogStore } from "@/stores/catalog-store";
 import { useThumbnail } from "@/lib/thumbnails/use-thumbnail";
@@ -17,20 +17,14 @@ function FilmstripItem({ id }: { id: string }) {
   const isSelected = useCatalogStore((s) => s.selected.has(id));
   const isActive = useCatalogStore((s) => s.activeId === id);
   const select = useCatalogStore((s) => s.select);
+  const removePhoto = useCatalogStore((s) => s.removePhoto);
 
   if (!photo) return null;
 
   return (
-    <button
-      type="button"
-      title={photo.error ? `${photo.name} — ${photo.error}` : photo.name}
-      aria-pressed={isSelected}
-      onClick={(e) =>
-        select(id, { toggle: e.metaKey || e.ctrlKey, range: e.shiftKey })
-      }
+    <div
       className={cn(
-        "group relative grid h-16 w-full place-items-center overflow-hidden rounded",
-        "border bg-canvas transition-colors",
+        "group relative h-16 w-full overflow-hidden rounded border bg-canvas transition-colors",
         isActive
           ? "border-accent"
           : isSelected
@@ -38,25 +32,48 @@ function FilmstripItem({ id }: { id: string }) {
             : "border-line hover:border-faint",
       )}
     >
-      {photo.thumbUrl ? (
-        <img
-          src={photo.thumbUrl}
-          alt=""
-          draggable={false}
-          className="h-full w-full object-contain"
-        />
-      ) : photo.status === "error" ? (
-        <AlertTriangle size={14} className="text-danger" />
-      ) : photo.status === "unsupported" ? (
-        <FileQuestion size={14} className="text-faint" />
-      ) : (
-        <div className="h-full w-full animate-pulse bg-raised" />
-      )}
+      <button
+        type="button"
+        title={photo.error ? `${photo.name} — ${photo.error}` : photo.name}
+        aria-pressed={isSelected}
+        onClick={(e) =>
+          select(id, { toggle: e.metaKey || e.ctrlKey, range: e.shiftKey })
+        }
+        className="grid h-full w-full place-items-center"
+      >
+        {photo.thumbUrl ? (
+          <img
+            src={photo.thumbUrl}
+            alt=""
+            draggable={false}
+            className="h-full w-full object-contain"
+          />
+        ) : photo.status === "error" ? (
+          <AlertTriangle size={14} className="text-danger" />
+        ) : photo.status === "unsupported" ? (
+          <FileQuestion size={14} className="text-faint" />
+        ) : (
+          <div className="h-full w-full animate-pulse bg-raised" />
+        )}
 
-      {isSelected && (
-        <span className="absolute inset-x-0 bottom-0 h-0.5 bg-accent" />
-      )}
-    </button>
+        {isSelected && (
+          <span className="absolute inset-x-0 bottom-0 h-0.5 bg-accent" />
+        )}
+      </button>
+
+      <button
+        type="button"
+        aria-label={`Remove ${photo.name} from the library`}
+        title="Remove from library"
+        onClick={(e) => {
+          e.stopPropagation();
+          removePhoto(id);
+        }}
+        className="absolute top-0.5 right-0.5 grid size-4 place-items-center rounded-full bg-canvas/80 text-faint opacity-0 transition-opacity hover:bg-danger/80 hover:text-white group-hover:opacity-100"
+      >
+        <X size={10} />
+      </button>
+    </div>
   );
 }
 

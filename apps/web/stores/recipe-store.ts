@@ -32,6 +32,11 @@ interface RecipeState {
   ensure: (photoIds: string[]) => void;
   discard: (photoIds: string[]) => void;
   clear: () => void;
+  /** Bulk-replaces the whole map — used once at boot to restore persisted
+   *  recipes before any photo is imported, so `ensure` sees them already
+   *  there (keyed by the same content-derived id) instead of overwriting
+   *  them with defaults. */
+  hydrate: (recipes: Record<string, EditRecipe>) => void;
 
   setFilter: <K extends keyof Filters>(
     photoId: string,
@@ -103,6 +108,8 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
     }),
 
   clear: () => set({ recipes: {} }),
+
+  hydrate: (recipes) => set({ recipes }),
 
   setFilter: (photoId, key, value) =>
     set((s) => ({

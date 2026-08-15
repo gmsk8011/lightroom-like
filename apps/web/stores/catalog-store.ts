@@ -30,6 +30,11 @@ interface CatalogState {
   selectAll: () => void;
   clearSelection: () => void;
   clear: () => void;
+  /** Removes one photo from the library (and its recipe) — never touches
+   *  the file on disk, only what Framer is tracking in this session. */
+  removePhoto: (id: string) => void;
+  /** Removes every currently-selected photo the same way. */
+  removeSelected: () => void;
 }
 
 export const useCatalogStore = create<CatalogState>((set, get) => ({
@@ -115,6 +120,32 @@ export const useCatalogStore = create<CatalogState>((set, get) => ({
       directoryName: null,
       skipped: 0,
     });
+  },
+
+  removePhoto: (id) => {
+    set((s) => {
+      if (!s.byId[id]) return s;
+      const order = s.order.filter((x) => x !== id);
+      const byId = { ...s.byId };
+      delete byId[id];
+      const selected = new Set(s.selected);
+      selected.delete(id);
+
+      let activeId = s.activeId;
+      if (activeId === id) {
+        const oldIndex = s.order.indexOf(id);
+        activeId = order[Math.min(oldIndex, order.length - 1)] ?? null;
+        if (activeId) selected.add(activeId);
+      }
+      const anchorId = s.anchorId === id ? activeId : s.anchorId;
+
+      return { order, byId, selected, activeId, anchorId };
+    });
+    useRecipeStore.getState().discard([id]);
+  },
+
+  removeSelected: () => {
+    for (const id of get().selected) get().removePhoto(id);
   },
 }));
 
