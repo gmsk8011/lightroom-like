@@ -14,6 +14,7 @@ export const DEFAULT_FILTERS: Filters = {
   clarity: 0,
   denoise: 0,
   orton: 0,
+  softGlow: 0,
   haze: 0,
   mist: 0,
   diffusion: 0,

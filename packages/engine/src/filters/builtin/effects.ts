@@ -73,6 +73,32 @@ export const EFFECT_FILTERS: FilterDefinition[] = [
     `,
   },
   {
+    id: "softGlow",
+    label: "Soft Glow",
+    group: "effects",
+    space: "linear",
+    order: 67,
+    min: 0,
+    max: 100,
+    step: 1,
+    precision: 0,
+    defaultValue: 0,
+    needsBlur: true,
+    // A gentler cousin of Orton: the same screen-blended blur, weighted by
+    // the pixel's own brightness so bright areas bloom more than shadows —
+    // but never zeroed out on an ordinary photo with no blown highlights,
+    // which a hard threshold here would do (and read as "the slider does
+    // nothing"). Reads as light blooming outward from whatever's already
+    // bright, rather than Orton's flat lift across the whole frame.
+    glsl: `
+      vec3 blurred = srgbToLinear(texture(u_blur, v_uv).rgb);
+      vec3 glow = blurred * 1.2;
+      float mask = 0.35 + 0.65 * smoothstep(0.0, 0.7, luma(c));
+      vec3 screened = vec3(1.0) - (vec3(1.0) - c) * (vec3(1.0) - glow);
+      c = mix(c, screened, (v / 100.0) * mask);
+    `,
+  },
+  {
     id: "haze",
     label: "Haze",
     group: "effects",

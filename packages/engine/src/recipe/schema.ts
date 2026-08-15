@@ -60,6 +60,7 @@ export const filtersSchema = z.object({
   clarity: z.number().min(-100).max(100),
   denoise: z.number().min(0).max(100),
   orton: z.number().min(0).max(100),
+  softGlow: z.number().min(0).max(100),
   haze: z.number().min(0).max(100),
   mist: z.number().min(0).max(100),
   diffusion: z.number().min(0).max(100),
