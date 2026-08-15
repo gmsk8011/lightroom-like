@@ -18,7 +18,7 @@ export interface CompositeInput {
 }
 
 /**
- * Draws the final image: background, frame, photo, frame details.
+ * Draws the final image: background, frame, photo, frame details, captions.
  *
  * Preview and export both come through here — the only difference is `scale`,
  * which is what keeps what you see and what you get identical.
@@ -26,23 +26,28 @@ export interface CompositeInput {
 export function composite(input: CompositeInput): FrameLayout {
   const { ctx, source, sourceWidth, sourceHeight, recipe } = input;
   const scale = input.scale ?? 1;
-  const { border } = recipe;
+  const { border, crop } = recipe;
 
   registerBuiltinFrames();
 
-  // The caption never affects frame layout — it's a pure overlay painted on
-  // top of the finished canvas, so resizing or moving it never changes the
-  // canvas size or shrinks the photo.
-  const metrics = measureCaption(ctx, recipe.caption, sourceWidth, sourceHeight);
+  // A crop is applied before everything else: the cropped region is treated
+  // as "the photo" for aspect-pad, border sizing and caption placement, all
+  // of which key off these dimensions rather than the original ones.
+  const cropX = crop ? crop.x : 0;
+  const cropY = crop ? crop.y : 0;
+  const cropWidthPct = crop ? crop.width : 100;
+  const cropHeightPct = crop ? crop.height : 100;
+  const photoWidth = sourceWidth * (cropWidthPct / 100);
+  const photoHeight = sourceHeight * (cropHeightPct / 100);
 
-  const full = computeFrameLayout(border, sourceWidth, sourceHeight);
+  const full = computeFrameLayout(border, photoWidth, photoHeight);
   const layout = scale === 1 ? full : scaleLayout(full, scale);
 
   const canvas = ctx.canvas;
   canvas.width = layout.canvas.width;
   canvas.height = layout.canvas.height;
 
-  const unit = borderUnit(sourceWidth, sourceHeight) * scale;
+  const unit = borderUnit(photoWidth, photoHeight) * scale;
   const radius = border.radiusPct * unit;
 
   ctx.clearRect(0, 0, layout.canvas.width, layout.canvas.height);
@@ -80,8 +85,22 @@ export function composite(input: CompositeInput): FrameLayout {
     ctx.clip();
   }
 
+  // `source`'s own pixel dimensions track sourceWidth/sourceHeight at
+  // `scale` in every caller (the WebGL canvas is sized that way, and the
+  // no-filter export path uses the bitmap itself at scale 1) — so the crop
+  // rect converts into source-pixel coordinates with the same scale factor,
+  // without needing to read the source's real width/height directly.
+  const sx = sourceWidth * (cropX / 100) * scale;
+  const sy = sourceHeight * (cropY / 100) * scale;
+  const sWidth = photoWidth * scale;
+  const sHeight = photoHeight * scale;
+
   ctx.drawImage(
     source,
+    sx,
+    sy,
+    sWidth,
+    sHeight,
     layout.image.x,
     layout.image.y,
     layout.image.width,
@@ -91,8 +110,11 @@ export function composite(input: CompositeInput): FrameLayout {
 
   frame?.drawOver?.(ctx, layout, border);
 
-  if (metrics) {
-    drawCaption(ctx, layout.canvas.width, layout.canvas.height, recipe.caption, metrics, scale);
+  for (const caption of recipe.captions) {
+    const metrics = measureCaption(ctx, caption, photoWidth, photoHeight);
+    if (metrics) {
+      drawCaption(ctx, layout.canvas.width, layout.canvas.height, caption, metrics, scale);
+    }
   }
 
   return layout;

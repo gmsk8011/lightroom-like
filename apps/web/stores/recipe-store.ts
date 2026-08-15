@@ -4,12 +4,14 @@ import { create } from "zustand";
 import {
   applyPreset,
   cloneRecipe,
+  createCaption,
   createDefaultRecipe,
   DEFAULT_BORDER,
-  DEFAULT_CAPTION,
+  DEFAULT_CROP,
   DEFAULT_FILTERS,
   type Border,
   type Caption,
+  type Crop,
   type EditRecipe,
   type FilterPreset,
   type Filters,
@@ -41,17 +43,25 @@ interface RecipeState {
     key: K,
     value: Border[K],
   ) => void;
+
+  /** Appends a new caption and returns its id, so the caller can select it. */
+  addCaption: (photoId: string, overrides?: Partial<Omit<Caption, "id">>) => string;
+  removeCaption: (photoId: string, captionId: string) => void;
   setCaption: <K extends keyof Caption>(
     photoId: string,
+    captionId: string,
     key: K,
     value: Caption[K],
   ) => void;
+
+  setCrop: (photoId: string, crop: Crop) => void;
+  clearCrop: (photoId: string) => void;
+
   applyFilterPreset: (photoId: string, preset: FilterPreset) => void;
   replaceRecipe: (photoId: string, recipe: EditRecipe) => void;
 
   resetFilters: (photoId: string) => void;
   resetBorder: (photoId: string) => void;
-  resetCaption: (photoId: string) => void;
   resetAll: (photoId: string) => void;
 
   /** Copies one photo's recipe onto every id in `targetIds`, source included. */
@@ -111,12 +121,43 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       })),
     })),
 
-  setCaption: (photoId, key, value) =>
+  addCaption: (photoId, overrides) => {
+    const caption = createCaption(overrides);
     set((s) => ({
       recipes: withRecipe(s.recipes, photoId, (r) => ({
         ...r,
-        caption: { ...r.caption, [key]: value },
+        captions: [...r.captions, caption],
       })),
+    }));
+    return caption.id;
+  },
+
+  removeCaption: (photoId, captionId) =>
+    set((s) => ({
+      recipes: withRecipe(s.recipes, photoId, (r) => ({
+        ...r,
+        captions: r.captions.filter((c) => c.id !== captionId),
+      })),
+    })),
+
+  setCaption: (photoId, captionId, key, value) =>
+    set((s) => ({
+      recipes: withRecipe(s.recipes, photoId, (r) => ({
+        ...r,
+        captions: r.captions.map((c) =>
+          c.id === captionId ? { ...c, [key]: value } : c,
+        ),
+      })),
+    })),
+
+  setCrop: (photoId, crop) =>
+    set((s) => ({
+      recipes: withRecipe(s.recipes, photoId, (r) => ({ ...r, crop })),
+    })),
+
+  clearCrop: (photoId) =>
+    set((s) => ({
+      recipes: withRecipe(s.recipes, photoId, (r) => ({ ...r, crop: DEFAULT_CROP })),
     })),
 
   applyFilterPreset: (photoId, preset) =>
@@ -142,13 +183,6 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       recipes: withRecipe(s.recipes, photoId, (r) => ({
         ...r,
         border: { ...DEFAULT_BORDER },
-      })),
-    })),
-  resetCaption: (photoId) =>
-    set((s) => ({
-      recipes: withRecipe(s.recipes, photoId, (r) => ({
-        ...r,
-        caption: { ...DEFAULT_CAPTION },
       })),
     })),
   resetAll: (photoId) =>

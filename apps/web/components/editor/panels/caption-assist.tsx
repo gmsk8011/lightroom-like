@@ -3,7 +3,6 @@
 import * as React from "react";
 import { Check, Loader2, Sparkles, SpellCheck, X } from "lucide-react";
 import { Button, cn } from "@lrl/ui";
-import { DEFAULT_CAPTION } from "@lrl/engine";
 import {
   applyChange,
   useCaptionAssist,
@@ -11,6 +10,7 @@ import {
 } from "@/lib/caption/use-caption-assist";
 import { useCatalogStore } from "@/stores/catalog-store";
 import { useRecipeStore } from "@/stores/recipe-store";
+import { useUiStore } from "@/stores/ui-store";
 
 const TYPE_LABELS: Record<AssistChange["type"], string> = {
   grammar: "Grammar",
@@ -22,9 +22,11 @@ const TYPE_LABELS: Record<AssistChange["type"], string> = {
 
 export function CaptionAssist() {
   const photoId = useCatalogStore((s) => s.activeId);
-  const text = useRecipeStore((s) =>
-    photoId ? (s.recipes[photoId]?.caption.text ?? DEFAULT_CAPTION.text) : DEFAULT_CAPTION.text,
-  );
+  const captionId = useUiStore((s) => s.selectedCaptionId);
+  const text = useRecipeStore((s) => {
+    const captions = photoId ? (s.recipes[photoId]?.captions ?? []) : [];
+    return captions.find((c) => c.id === captionId)?.text ?? "";
+  });
   const setCaption = useRecipeStore((s) => s.setCaption);
   const { status, changes, corrected, error, run, reset, dismissChange } =
     useCaptionAssist();
@@ -47,19 +49,19 @@ export function CaptionAssist() {
   }
 
   function accept(change: AssistChange, index: number) {
-    if (!photoId) return;
-    const current =
-      useRecipeStore.getState().recipes[photoId]?.caption.text ?? DEFAULT_CAPTION.text;
+    if (!photoId || !captionId) return;
+    const captions = useRecipeStore.getState().recipes[photoId]?.captions ?? [];
+    const current = captions.find((c) => c.id === captionId)?.text ?? "";
     const next = applyChange(current, change);
     checkedText.current = next;
-    setCaption(photoId, "text", next);
+    setCaption(photoId, captionId, "text", next);
     dismissChange(index);
   }
 
   function acceptAll() {
-    if (!corrected || !photoId) return;
+    if (!corrected || !photoId || !captionId) return;
     checkedText.current = corrected;
-    setCaption(photoId, "text", corrected);
+    setCaption(photoId, captionId, "text", corrected);
     reset();
   }
 

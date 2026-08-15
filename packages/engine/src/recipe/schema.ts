@@ -81,7 +81,9 @@ export const borderSchema = z.object({
 export type Border = z.infer<typeof borderSchema>;
 
 export const captionSchema = z.object({
-  enabled: z.boolean(),
+  /** Stable per-caption id — a photo can carry any number of captions, each
+   *  independently positioned, styled and deletable. */
+  id: z.string(),
   text: z.string().max(500),
   fontFamily: z.string(),
   fontWeight: z.number().int().min(100).max(900),
@@ -121,10 +123,25 @@ export const captionSchema = z.object({
 });
 export type Caption = z.infer<typeof captionSchema>;
 
+/** A crop rect in percent of the original photo — x/y is the top-left
+ *  corner, width/height the selection size. `null` means uncropped. Applied
+ *  before the border/frame layout, so the cropped region is treated as "the
+ *  photo" for every downstream step (aspect-pad, border sizing, captions). */
+export const cropSchema = z
+  .object({
+    x: z.number().min(0).max(100),
+    y: z.number().min(0).max(100),
+    width: z.number().min(1).max(100),
+    height: z.number().min(1).max(100),
+  })
+  .nullable();
+export type Crop = z.infer<typeof cropSchema>;
+
 export const editRecipeSchema = z.object({
   version: z.literal(1),
   filters: filtersSchema,
   border: borderSchema,
-  caption: captionSchema,
+  crop: cropSchema,
+  captions: z.array(captionSchema),
 });
 export type EditRecipe = z.infer<typeof editRecipeSchema>;

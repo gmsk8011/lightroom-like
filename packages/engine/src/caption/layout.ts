@@ -49,7 +49,7 @@ export function captionText(caption: Caption): string {
 }
 
 export function hasCaption(caption: Caption): boolean {
-  return caption.enabled && caption.text.trim().length > 0;
+  return caption.text.trim().length > 0;
 }
 
 export function fontString(caption: Caption, fontSize: number): string {

@@ -1,4 +1,4 @@
-import type { Border, Caption, EditRecipe, Filters } from "./schema";
+import type { Border, Caption, Crop, EditRecipe, Filters } from "./schema";
 
 export const DEFAULT_FILTERS: Filters = {
   exposure: 0,
@@ -29,8 +29,12 @@ export const DEFAULT_BORDER: Border = {
   shadowOpacity: 0.35,
 };
 
-export const DEFAULT_CAPTION: Caption = {
-  enabled: false,
+export const DEFAULT_CROP: Crop = null;
+
+/** Value template for a new caption — everything but the id, which
+ *  `createCaption` mints fresh so multiple captions on one photo never
+ *  collide. */
+export const CAPTION_TEMPLATE: Omit<Caption, "id"> = {
   text: "",
   fontFamily: "Inter",
   fontWeight: 400,
@@ -54,12 +58,26 @@ export const DEFAULT_CAPTION: Caption = {
   boxHeightPct: 0,
 };
 
+function newCaptionId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `caption-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** Creates a new, independently-positioned caption. Each call to
+ *  `addCaption` on the store goes through here so ids never collide within
+ *  a photo's caption list. */
+export function createCaption(overrides: Partial<Omit<Caption, "id">> = {}): Caption {
+  return { id: newCaptionId(), ...CAPTION_TEMPLATE, ...overrides };
+}
+
 export function createDefaultRecipe(): EditRecipe {
   return {
     version: 1,
     filters: { ...DEFAULT_FILTERS },
     border: { ...DEFAULT_BORDER },
-    caption: { ...DEFAULT_CAPTION },
+    crop: DEFAULT_CROP,
+    captions: [],
   };
 }
 
@@ -68,7 +86,8 @@ export function cloneRecipe(recipe: EditRecipe): EditRecipe {
     version: 1,
     filters: { ...recipe.filters },
     border: { ...recipe.border },
-    caption: { ...recipe.caption },
+    crop: recipe.crop ? { ...recipe.crop } : null,
+    captions: recipe.captions.map((c) => ({ ...c })),
   };
 }
 
@@ -84,6 +103,7 @@ export function isIdentityRecipe(recipe: EditRecipe): boolean {
   const filtersClean = areFiltersDefault(recipe.filters);
   const borderClean =
     recipe.border.type === "none" && recipe.border.aspect === "original";
-  const captionClean = !recipe.caption.enabled || !recipe.caption.text.trim();
-  return filtersClean && borderClean && captionClean;
+  const cropClean = recipe.crop === null;
+  const captionsClean = recipe.captions.every((c) => !c.text.trim());
+  return filtersClean && borderClean && cropClean && captionsClean;
 }

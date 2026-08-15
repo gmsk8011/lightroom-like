@@ -3,6 +3,7 @@
 import { cn } from "@lrl/ui";
 import { useUiStore } from "@/stores/ui-store";
 import { FiltersPanel } from "./panels/filters-panel";
+import { CropPanel } from "./panels/crop-panel";
 import { BorderPanel } from "./panels/border-panel";
 import { CaptionPanel } from "./panels/caption-panel";
 
@@ -23,6 +24,7 @@ export function RightRail() {
     >
       <div className="w-72">
         <FiltersPanel />
+        <CropPanel />
         <BorderPanel />
         <CaptionPanel />
       </div>
