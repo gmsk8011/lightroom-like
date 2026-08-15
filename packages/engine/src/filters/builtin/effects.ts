@@ -2,6 +2,27 @@ import type { FilterDefinition } from "../types";
 
 export const EFFECT_FILTERS: FilterDefinition[] = [
   {
+    id: "denoise",
+    label: "Denoise",
+    group: "effects",
+    space: "linear",
+    order: 55,
+    min: 0,
+    max: 100,
+    step: 1,
+    precision: 0,
+    defaultValue: 0,
+    needsBlur: true,
+    // A straightforward blend toward the shared blur reference — it reduces
+    // fine-grained noise the same way a Gaussian-blur denoiser does, but
+    // isn't edge-aware, so pushed hard it softens real detail along with
+    // the noise. There's no bilateral/edge-preserving pass in this pipeline.
+    glsl: `
+      vec3 blurred = srgbToLinear(texture(u_blur, v_uv).rgb);
+      c = mix(c, blurred, v / 100.0);
+    `,
+  },
+  {
     id: "clarity",
     label: "Clarity",
     group: "effects",
@@ -20,6 +41,29 @@ export const EFFECT_FILTERS: FilterDefinition[] = [
       vec3 blurred = srgbToLinear(texture(u_blur, v_uv).rgb);
       float detail = luma(c) - luma(blurred);
       c = max(c + detail * (v / 100.0), vec3(0.0));
+    `,
+  },
+  {
+    id: "orton",
+    label: "Orton Glow",
+    group: "effects",
+    space: "linear",
+    order: 65,
+    min: 0,
+    max: 100,
+    step: 1,
+    precision: 0,
+    defaultValue: 0,
+    needsBlur: true,
+    // The classic darkroom trick: a blurred, deliberately brightened copy
+    // of the frame screened back over the sharp original. Screen only ever
+    // lightens, so the effect reads as a soft bloom around bright areas
+    // rather than a flat haze over the whole image.
+    glsl: `
+      vec3 blurred = srgbToLinear(texture(u_blur, v_uv).rgb);
+      vec3 glow = blurred * 1.5;
+      vec3 screened = vec3(1.0) - (vec3(1.0) - c) * (vec3(1.0) - glow);
+      c = mix(c, screened, v / 100.0);
     `,
   },
   {

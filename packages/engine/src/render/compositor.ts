@@ -90,13 +90,42 @@ export function composite(input: CompositeInput): FrameLayout {
   // no-filter export path uses the bitmap itself at scale 1) — so the crop
   // rect converts into source-pixel coordinates with the same scale factor,
   // without needing to read the source's real width/height directly.
+  const sourceRealWidth = sourceWidth * scale;
+  const sourceRealHeight = sourceHeight * scale;
+  let rotatedSource: CanvasImageSource = source;
+
+  const rotation = crop?.rotation ?? 0;
+  if (rotation !== 0) {
+    // Straightening rotates the whole photo about its own centre before the
+    // crop rect is cut from it, into a same-size scratch canvas — a corner
+    // that rotates past the frame just leaves that corner showing the
+    // border colour once cropped, same as any straighten tool.
+    const rotated = new OffscreenCanvas(
+      Math.max(1, Math.round(sourceRealWidth)),
+      Math.max(1, Math.round(sourceRealHeight)),
+    );
+    const rotatedCtx = rotated.getContext("2d");
+    if (rotatedCtx) {
+      rotatedCtx.translate(sourceRealWidth / 2, sourceRealHeight / 2);
+      rotatedCtx.rotate((rotation * Math.PI) / 180);
+      rotatedCtx.drawImage(
+        source,
+        -sourceRealWidth / 2,
+        -sourceRealHeight / 2,
+        sourceRealWidth,
+        sourceRealHeight,
+      );
+      rotatedSource = rotated;
+    }
+  }
+
   const sx = sourceWidth * (cropX / 100) * scale;
   const sy = sourceHeight * (cropY / 100) * scale;
   const sWidth = photoWidth * scale;
   const sHeight = photoHeight * scale;
 
   ctx.drawImage(
-    source,
+    rotatedSource,
     sx,
     sy,
     sWidth,

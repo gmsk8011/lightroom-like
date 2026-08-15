@@ -58,6 +58,8 @@ export const filtersSchema = z.object({
   vibrance: z.number().min(-100).max(100),
   saturation: z.number().min(-100).max(100),
   clarity: z.number().min(-100).max(100),
+  denoise: z.number().min(0).max(100),
+  orton: z.number().min(0).max(100),
   grain: z.number().min(0).max(100),
   vignette: z.number().min(-100).max(100),
   /** id of the preset this was seeded from, purely for UI display */
@@ -126,13 +128,16 @@ export type Caption = z.infer<typeof captionSchema>;
 /** A crop rect in percent of the original photo — x/y is the top-left
  *  corner, width/height the selection size. `null` means uncropped. Applied
  *  before the border/frame layout, so the cropped region is treated as "the
- *  photo" for every downstream step (aspect-pad, border sizing, captions). */
+ *  photo" for every downstream step (aspect-pad, border sizing, captions).
+ *  `rotation` (degrees, straightening only) is applied first, rotating the
+ *  whole photo about its own centre before the rect is cut from it. */
 export const cropSchema = z
   .object({
     x: z.number().min(0).max(100),
     y: z.number().min(0).max(100),
     width: z.number().min(1).max(100),
     height: z.number().min(1).max(100),
+    rotation: z.number().min(-45).max(45),
   })
   .nullable();
 export type Crop = z.infer<typeof cropSchema>;

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Minus, Plus, X } from "lucide-react";
+import { Check, Minus, Plus, RotateCcw, X } from "lucide-react";
 import {
   aspectValue,
   captionBox,
@@ -34,7 +34,12 @@ const DRAG_HIT_PADDING = 10;
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 4;
+/** Multiplier used by the +/- toolbar buttons — a bigger, discrete jump is
+ *  fine there since each click is a deliberate action. */
 const ZOOM_STEP = 1.25;
+/** Per-wheel-unit zoom factor exponent — see the wheel handler for why this
+ *  is scaled by scroll distance instead of a fixed step. */
+const WHEEL_ZOOM_SENSITIVITY = 0.0008;
 const MIN_CROP_PCT = 5;
 /** Hit-test tolerance around a crop handle, in canvas-internal pixels. */
 const HANDLE_HIT_PADDING = 16;
@@ -60,11 +65,13 @@ function fitScale(canvasW: number, canvasH: number, boxW: number, boxH: number):
   return Math.min(boxW / canvasW, boxH / canvasH, 1);
 }
 
-/** A pan offset larger than the overhang is wasted — clamp so the photo
- *  always still covers the container, and centre it outright once it's
- *  smaller than the container on that axis. */
+/** Keeps the photo fully reachable without ever letting it be dragged
+ *  entirely out of view. When the photo is smaller than the container this
+ *  lets it be repositioned anywhere within the container's bounds instead of
+ *  snapping back to dead centre; when it's larger, the usual "can't show
+ *  past the edge" clamp applies. */
 function clampPan(rawOffset: number, displaySize: number, boxSize: number): number {
-  if (displaySize <= boxSize) return (boxSize - displaySize) / 2;
+  if (displaySize <= boxSize) return clamp(rawOffset, 0, boxSize - displaySize);
   return clamp(rawOffset, boxSize - displaySize, 0);
 }
 
@@ -149,7 +156,6 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
   const [ready, setReady] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [box, setBox] = React.useState({ width: 0, height: 0 });
-  const [hovering, setHovering] = React.useState(false);
   const [dragging, setDragging] = React.useState(false);
   const [zoom, setZoom] = React.useState<number | null>(null);
   const [pan, setPan] = React.useState({ x: 0, y: 0 });
@@ -164,6 +170,7 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
   const setCropMode = useUiStore((s) => s.setCropMode);
   const [cropRect, setCropRect] = React.useState<Crop2>({ x: 0, y: 0, width: 100, height: 100 });
   const [cropAspect, setCropAspect] = React.useState<AspectRatio>("original");
+  const [cropRotation, setCropRotation] = React.useState(0);
   const cropDragRef = React.useRef<{
     handle: CropHandle;
     startPointerPct: { x: number; y: number };
@@ -183,6 +190,7 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
     const existing = useRecipeStore.getState().recipes[photo.id]?.crop;
     setCropRect(existing ? { ...existing } : { x: 0, y: 0, width: 100, height: 100 });
     setCropAspect("original");
+    setCropRotation(existing?.rotation ?? 0);
     setZoom(null);
     setPan({ x: 0, y: 0 });
   }, [cropMode, photo.id]);
@@ -403,8 +411,24 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
     canvas.style.left = `${Math.round((box.width - displayW) / 2)}px`;
     canvas.style.top = `${Math.round((box.height - displayH) / 2)}px`;
 
+    // Straightening is previewed here exactly as compositor.ts applies it:
+    // rotate the whole photo about its own centre into a same-size scratch
+    // canvas first, so the crop rect (dim mask, grid, handles) and the final
+    // export always agree on what "rotated" looks like.
+    let rotatedGlCanvas: CanvasImageSource = glCanvas;
+    if (cropRotation !== 0) {
+      const rotated = new OffscreenCanvas(canvasW, canvasH);
+      const rotatedCtx = rotated.getContext("2d");
+      if (rotatedCtx) {
+        rotatedCtx.translate(canvasW / 2, canvasH / 2);
+        rotatedCtx.rotate((cropRotation * Math.PI) / 180);
+        rotatedCtx.drawImage(glCanvas, -canvasW / 2, -canvasH / 2, canvasW, canvasH);
+        rotatedGlCanvas = rotated;
+      }
+    }
+
     ctx.clearRect(0, 0, canvasW, canvasH);
-    ctx.drawImage(glCanvas, 0, 0, canvasW, canvasH);
+    ctx.drawImage(rotatedGlCanvas, 0, 0, canvasW, canvasH);
 
     const rectX = (cropRect.x / 100) * canvasW;
     const rectY = (cropRect.y / 100) * canvasH;
@@ -414,7 +438,7 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
     // Dim everything, then re-reveal the selected region at full brightness.
     ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
     ctx.fillRect(0, 0, canvasW, canvasH);
-    ctx.drawImage(glCanvas, rectX, rectY, rectW, rectH, rectX, rectY, rectW, rectH);
+    ctx.drawImage(rotatedGlCanvas, rectX, rectY, rectW, rectH, rectX, rectY, rectW, rectH);
 
     // Rule-of-thirds grid inside the selection.
     ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
@@ -452,14 +476,15 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
 
     const canvasTop = (box.height - displayH) / 2;
     const canvasBottom = canvasTop + displayH;
-    const toolbarHeight = 44;
+    // The toolbar is two rows now (straighten, then aspect/cancel/apply).
+    const toolbarHeight = 76;
     const gap = 12;
     const nextTop =
       box.height - canvasBottom >= toolbarHeight + gap
         ? canvasBottom + gap
         : Math.max(gap, canvasTop - toolbarHeight - gap);
     setCropToolbarTop((prev) => (Math.abs(prev - nextTop) < 0.5 ? prev : nextTop));
-  }, [box, cropRect, photo.id]);
+  }, [box, cropRect, cropRotation, photo.id]);
 
   React.useEffect(() => {
     if (!ready || !cropMode) return;
@@ -478,12 +503,19 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
   );
 
   const commitCrop = React.useCallback(() => {
-    const isFull = cropRect.x <= 0.1 && cropRect.y <= 0.1 && cropRect.width >= 99.8 && cropRect.height >= 99.8;
+    const isFull =
+      cropRect.x <= 0.1 &&
+      cropRect.y <= 0.1 &&
+      cropRect.width >= 99.8 &&
+      cropRect.height >= 99.8 &&
+      cropRotation === 0;
     const store = useRecipeStore.getState();
     if (isFull) store.clearCrop(photo.id);
-    else store.setCrop(photo.id, { ...cropRect });
+    else store.setCrop(photo.id, { ...cropRect, rotation: cropRotation });
     setCropMode(false);
-  }, [cropRect, photo.id, setCropMode]);
+  }, [cropRect, cropRotation, photo.id, setCropMode]);
+
+  const resetCropRotation = React.useCallback(() => setCropRotation(0), []);
 
   const cancelCrop = React.useCallback(() => {
     setCropMode(false);
@@ -535,13 +567,6 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
     },
     [photo.id],
   );
-
-  const isZoomedIn = React.useCallback(() => {
-    const info = lastDrawRef.current;
-    if (!info) return false;
-    return info.layout.canvas.width * info.scale > box.width + 1 ||
-      info.layout.canvas.height * info.scale > box.height + 1;
-  }, [box]);
 
   /* ---------------------------------------------------------- crop hit */
 
@@ -687,15 +712,16 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
         return;
       }
 
-      if (isZoomedIn()) {
-        event.preventDefault();
-        panningRef.current = true;
-        panStartRef.current = { clientX: event.clientX, clientY: event.clientY, panX: pan.x, panY: pan.y };
-        setDragging(true);
-        event.currentTarget.setPointerCapture(event.pointerId);
-      }
+      // Dragging the photo works at any zoom level, not just when zoomed
+      // past fit — clampPan still keeps it fully reachable rather than
+      // letting it disappear off-screen.
+      event.preventDefault();
+      panningRef.current = true;
+      panStartRef.current = { clientX: event.clientX, clientY: event.clientY, panX: pan.x, panY: pan.y };
+      setDragging(true);
+      event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [canvasPoint, hitTestCaption, isZoomedIn, pan, setSelectedCaptionId],
+    [canvasPoint, hitTestCaption, pan, setSelectedCaptionId],
   );
 
   const onPointerMove = React.useCallback(
@@ -717,13 +743,9 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
         const dx = event.clientX - panStartRef.current.clientX;
         const dy = event.clientY - panStartRef.current.clientY;
         setPan({ x: panStartRef.current.panX + dx, y: panStartRef.current.panY + dy });
-        return;
       }
-
-      const point = canvasPoint(event);
-      if (point) setHovering(!!hitTestCaption(point));
     },
-    [canvasPoint, hitTestCaption, photo.id],
+    [canvasPoint, photo.id],
   );
 
   const endDrag = React.useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -776,7 +798,13 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
     if (!container || cropMode) return;
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
-      const factor = event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+      // Scaled continuously by the actual scroll distance rather than a
+      // fixed jump per event — a mouse's ~100-unit notch nudges the zoom a
+      // few percent, and a trackpad's many small deltas during one gesture
+      // add up smoothly instead of stair-stepping. The clamp keeps one
+      // unusually large delta (a hard wheel flick) from jumping too far.
+      const delta = clamp(event.deltaY, -120, 120);
+      const factor = Math.exp(-delta * WHEEL_ZOOM_SENSITIVITY);
       zoomAt(factor, event.clientX, event.clientY);
     };
     container.addEventListener("wheel", onWheel, { passive: false });
@@ -821,21 +849,14 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
             opacity: ready ? 1 : 0,
             transition: "opacity 120ms",
             touchAction: "none",
-            cursor: cropMode
-              ? "crosshair"
-              : dragging
-                ? "grabbing"
-                : hovering
-                  ? "grab"
-                  : isZoomedIn()
-                    ? "grab"
-                    : "default",
+            // The photo is draggable at every zoom level, so the hand
+            // cursor applies everywhere except while actively cropping.
+            cursor: cropMode ? "crosshair" : dragging ? "grabbing" : "grab",
           }}
           onPointerDown={cropMode ? onCropPointerDown : onPointerDown}
           onPointerMove={cropMode ? onCropPointerMove : onPointerMove}
           onPointerUp={cropMode ? endCropDrag : endDrag}
           onPointerCancel={cropMode ? endCropDrag : endDrag}
-          onPointerLeave={() => setHovering(false)}
         />
       )}
 
@@ -870,45 +891,71 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
 
       {cropMode && (
         <div
-          className="pointer-events-auto absolute left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-line bg-panel/95 px-2 py-1.5 shadow-lg backdrop-blur"
+          className="pointer-events-auto absolute left-1/2 flex -translate-x-1/2 flex-col gap-1.5 rounded-2xl border border-line bg-panel/95 px-2 py-1.5 shadow-lg backdrop-blur"
           style={{ top: `${Math.round(cropToolbarTop)}px` }}
         >
-          <div className="flex items-center gap-0.5">
-            {CROP_ASPECTS.map((a) => (
-              <button
-                key={a.value}
-                type="button"
-                onClick={() => applyAspect(a.value)}
-                className={cn(
-                  "rounded-full px-2 py-1 text-[11px] transition-colors",
-                  cropAspect === a.value
-                    ? "bg-accent/20 text-fg"
-                    : "text-muted hover:bg-raised hover:text-fg",
-                )}
-              >
-                {a.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-1.5 px-0.5">
+            <button
+              type="button"
+              aria-label="Reset straighten"
+              title="Reset straighten"
+              onClick={resetCropRotation}
+              className="grid size-5 shrink-0 place-items-center rounded-full text-faint transition-colors hover:bg-raised hover:text-fg"
+            >
+              <RotateCcw size={11} />
+            </button>
+            <input
+              type="range"
+              aria-label="Straighten"
+              min={-45}
+              max={45}
+              step={0.5}
+              value={cropRotation}
+              onChange={(e) => setCropRotation(Number(e.target.value))}
+              className="h-1 w-36 shrink-0 cursor-pointer accent-accent"
+            />
+            <span className="w-10 shrink-0 text-right text-[11px] tabular-nums text-muted">
+              {cropRotation.toFixed(1)}°
+            </span>
           </div>
-          <div className="h-4 w-px bg-line" />
-          <button
-            type="button"
-            aria-label="Cancel crop"
-            title="Cancel"
-            onClick={cancelCrop}
-            className="grid size-6 place-items-center rounded-full text-muted transition-colors hover:bg-danger/20 hover:text-danger"
-          >
-            <X size={13} />
-          </button>
-          <button
-            type="button"
-            aria-label="Apply crop"
-            title="Apply"
-            onClick={commitCrop}
-            className="grid size-6 place-items-center rounded-full bg-accent text-white transition-colors hover:bg-accent/90"
-          >
-            <Check size={13} />
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5">
+              {CROP_ASPECTS.map((a) => (
+                <button
+                  key={a.value}
+                  type="button"
+                  onClick={() => applyAspect(a.value)}
+                  className={cn(
+                    "rounded-full px-2 py-1 text-[11px] transition-colors",
+                    cropAspect === a.value
+                      ? "bg-accent/20 text-fg"
+                      : "text-muted hover:bg-raised hover:text-fg",
+                  )}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+            <div className="h-4 w-px bg-line" />
+            <button
+              type="button"
+              aria-label="Cancel crop"
+              title="Cancel"
+              onClick={cancelCrop}
+              className="grid size-6 place-items-center rounded-full text-muted transition-colors hover:bg-danger/20 hover:text-danger"
+            >
+              <X size={13} />
+            </button>
+            <button
+              type="button"
+              aria-label="Apply crop"
+              title="Apply"
+              onClick={commitCrop}
+              className="grid size-6 place-items-center rounded-full bg-accent text-white transition-colors hover:bg-accent/90"
+            >
+              <Check size={13} />
+            </button>
+          </div>
         </div>
       )}
     </div>

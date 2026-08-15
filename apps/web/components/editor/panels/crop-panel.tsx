@@ -31,7 +31,8 @@ export function CropPanel() {
       {crop ? (
         <p className="mt-1.5 text-[10px] leading-relaxed text-faint">
           Cropped to {crop.width.toFixed(0)}% × {crop.height.toFixed(0)}% of the
-          original photo.
+          original photo
+          {crop.rotation !== 0 ? `, straightened ${crop.rotation.toFixed(1)}°` : ""}.
         </p>
       ) : (
         <p className="mt-1.5 text-[10px] leading-relaxed text-faint">

@@ -12,6 +12,8 @@ export const DEFAULT_FILTERS: Filters = {
   vibrance: 0,
   saturation: 0,
   clarity: 0,
+  denoise: 0,
+  orton: 0,
   grain: 0,
   vignette: 0,
   preset: null,
