@@ -26,7 +26,9 @@ const FONT_OPTIONS = FONT_LABELS.map(([value, label]) => ({ value, label }));
 const STYLE_OPTIONS: readonly { value: CaptionStyle; label: string }[] = [
   { value: "fill", label: "Fill" },
   { value: "outline", label: "Outline" },
+  { value: "hollow", label: "Hollow" },
   { value: "knockout", label: "Knockout" },
+  { value: "frosted", label: "Frosted" },
 ];
 
 /** Nine quick-pick spots, laid out to match their visual position. */
@@ -192,7 +194,7 @@ export function CaptionPanel() {
         columns={3}
       />
 
-      {caption.style !== "knockout" && (
+      {(caption.style === "fill" || caption.style === "outline") && (
         <ColorField
           label="Text colour"
           value={caption.color}
@@ -218,8 +220,20 @@ export function CaptionPanel() {
           transparent — the box colour blends in rather than the raw photo.
         </p>
       )}
+      {caption.style === "frosted" && (
+        <p className="-mt-1 mb-1 text-[10px] leading-relaxed text-faint">
+          A soft, barely-there engraved look — try a lower opacity for a
+          subtler blend into the photo.
+        </p>
+      )}
+      {caption.style === "hollow" && (
+        <p className="-mt-1 mb-1 text-[10px] leading-relaxed text-faint">
+          No fill — only the outline is drawn, so the photo shows through the
+          inside of each letter.
+        </p>
+      )}
 
-      {caption.style === "outline" && (
+      {(caption.style === "outline" || caption.style === "hollow") && (
         <>
           <ColorField
             label="Outline colour"
@@ -264,6 +278,43 @@ export function CaptionPanel() {
             disabled={off}
             onChange={(v) => set("backgroundOpacity", v)}
           />
+        </>
+      )}
+
+      {caption.style !== "knockout" && caption.style !== "frosted" && (
+        <Toggle
+          label="Background box"
+          checked={caption.backgroundEnabled}
+          onChange={(v) => set("backgroundEnabled", v)}
+        />
+      )}
+
+      {caption.style !== "knockout" &&
+        caption.style !== "frosted" &&
+        caption.backgroundEnabled && (
+          <>
+            <ColorField
+              label="Box colour"
+              value={caption.backgroundColor}
+              disabled={off}
+              onChange={(v) => set("backgroundColor", v)}
+            />
+            <Slider
+              label="Box opacity"
+              value={caption.backgroundOpacity}
+              min={0}
+              max={1}
+              step={0.01}
+              precision={2}
+              defaultValue={0.5}
+              disabled={off}
+              onChange={(v) => set("backgroundOpacity", v)}
+            />
+          </>
+        )}
+
+      {caption.style !== "frosted" && (
+        <>
           <Slider
             label="Box width"
             value={caption.boxWidthPct}
@@ -287,61 +338,9 @@ export function CaptionPanel() {
             onChange={(v) => set("boxHeightPct", v)}
           />
           <p className="-mt-1 mb-1 text-[10px] leading-relaxed text-faint">
-            0 fits the box tightly to the text. Above that, it's a minimum —
-            the box only ever grows to fit, never shrinks the text.
+            0 fits the box tightly to the text. Above that, it grows the box;
+            below the text's natural size, it crops the text to fit.
           </p>
-        </>
-      )}
-
-      {caption.style !== "knockout" && (
-        <Toggle
-          label="Background box"
-          checked={caption.backgroundEnabled}
-          onChange={(v) => set("backgroundEnabled", v)}
-        />
-      )}
-
-      {caption.style !== "knockout" && caption.backgroundEnabled && (
-        <>
-          <ColorField
-            label="Box colour"
-            value={caption.backgroundColor}
-            disabled={off}
-            onChange={(v) => set("backgroundColor", v)}
-          />
-          <Slider
-            label="Box opacity"
-            value={caption.backgroundOpacity}
-            min={0}
-            max={1}
-            step={0.01}
-            precision={2}
-            defaultValue={0.5}
-            disabled={off}
-            onChange={(v) => set("backgroundOpacity", v)}
-          />
-          <Slider
-            label="Box width"
-            value={caption.boxWidthPct}
-            min={0}
-            max={100}
-            step={0.5}
-            precision={1}
-            defaultValue={0}
-            disabled={off}
-            onChange={(v) => set("boxWidthPct", v)}
-          />
-          <Slider
-            label="Box height"
-            value={caption.boxHeightPct}
-            min={0}
-            max={100}
-            step={0.5}
-            precision={1}
-            defaultValue={0}
-            disabled={off}
-            onChange={(v) => set("boxHeightPct", v)}
-          />
         </>
       )}
 

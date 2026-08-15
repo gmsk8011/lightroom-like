@@ -37,7 +37,13 @@ const hexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "expected a #rrggbb colour");
 
-export const CAPTION_STYLES = ["fill", "outline", "knockout"] as const;
+export const CAPTION_STYLES = [
+  "fill",
+  "outline",
+  "hollow",
+  "knockout",
+  "frosted",
+] as const;
 export type CaptionStyle = (typeof CAPTION_STYLES)[number];
 
 export const filtersSchema = z.object({

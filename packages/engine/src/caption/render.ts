@@ -26,10 +26,11 @@ function hexToRgba(hex: string, alpha: number): string {
  * painted on top of the finished frame, so resizing it or moving it never
  * changes the canvas or shrinks the photo.
  *
- * boxWidthPct/boxHeightPct are a floor, not a fixed size: at 0 (the default)
- * the box tightly fits the text, exactly as it always did. A non-zero value
- * only ever grows the box — it can never clip text by shrinking below what
- * the text needs.
+ * boxWidthPct/boxHeightPct are an absolute size, not a floor: at 0 (the
+ * default) the box tightly fits the text. A non-zero value sets the box to
+ * exactly that size — bigger than the text's auto-fit size adds margin,
+ * smaller crops it (drawCaption clips to this rect so cropped text is cut
+ * cleanly rather than spilling past the box).
  */
 export function captionBox(
   canvasWidth: number,
@@ -43,8 +44,10 @@ export function captionBox(
   // dragging always moves the caption's visual centre, regardless of align.
   const autoWidth = metrics.maxLineWidth * scale + metrics.padding * scale * 2;
 
-  const width = Math.max(autoWidth, canvasWidth * (caption.boxWidthPct / 100));
-  const height = Math.max(autoHeight, canvasHeight * (caption.boxHeightPct / 100));
+  const width =
+    caption.boxWidthPct > 0 ? canvasWidth * (caption.boxWidthPct / 100) : autoWidth;
+  const height =
+    caption.boxHeightPct > 0 ? canvasHeight * (caption.boxHeightPct / 100) : autoHeight;
 
   const centerX = canvasWidth * (caption.positionX / 100);
   const centerY = canvasHeight * (caption.positionY / 100);
@@ -138,7 +141,49 @@ export function drawCaption(
     return;
   }
 
-  if (caption.backgroundEnabled && caption.backgroundOpacity > 0) {
+  // Every other style draws straight onto the main canvas rather than an
+  // isolated buffer, so a manually-shrunk box (boxWidthPct/boxHeightPct
+  // below the text's auto-fit size) needs an explicit clip to crop the
+  // text cleanly instead of letting it spill past the box.
+  ctx.beginPath();
+  ctx.rect(box.x, box.y, box.width, box.height);
+  ctx.clip();
+
+  if (caption.style === "frosted") {
+    // A soft, low-contrast "engraved" look: two blurred, offset copies of
+    // the text — a light one shifted up-left and a dark one shifted
+    // down-right — read as a subtle emboss/frost over the photo rather
+    // than legible solid text. No box, no fill colour: caption.opacity is
+    // the only strength control.
+    const blur = fontSize * 0.05;
+    const offset = fontSize * 0.025;
+    ctx.filter = `blur(${blur}px)`;
+    ctx.fillStyle = hexToRgba("#ffffff", caption.opacity * 0.45);
+    metrics.lines.forEach((line, index) => {
+      ctx.fillText(
+        line,
+        x - offset,
+        top + index * lineHeight + lineHeight / 2 - offset,
+      );
+    });
+    ctx.fillStyle = hexToRgba("#000000", caption.opacity * 0.55);
+    metrics.lines.forEach((line, index) => {
+      ctx.fillText(
+        line,
+        x + offset,
+        top + index * lineHeight + lineHeight / 2 + offset,
+      );
+    });
+    ctx.filter = "none";
+    ctx.restore();
+    return;
+  }
+
+  if (
+    caption.style !== "hollow" &&
+    caption.backgroundEnabled &&
+    caption.backgroundOpacity > 0
+  ) {
     ctx.fillStyle = hexToRgba(caption.backgroundColor, caption.backgroundOpacity);
     ctx.fillRect(box.x, box.y, box.width, box.height);
   }
@@ -149,10 +194,16 @@ export function drawCaption(
     ctx.shadowOffsetY = fontSize * 0.06;
   }
 
-  if (caption.style === "outline" && caption.borderWidthPct > 0) {
+  if (
+    (caption.style === "outline" || caption.style === "hollow") &&
+    caption.borderWidthPct > 0
+  ) {
     // Stroke first, fill on top: strokeText centres its line on the glyph
     // path, so the fill covers the inward half and leaves a clean outline
-    // rather than a stroke that reads as blurring the letterform.
+    // rather than a stroke that reads as blurring the letterform. Hollow
+    // skips the fill entirely, so its stroke is drawn the same way but the
+    // letter interior stays untouched, showing whatever is already
+    // underneath (the photo, or a background box if enabled).
     ctx.strokeStyle = hexToRgba(caption.borderColor, caption.opacity);
     ctx.lineWidth = fontSize * (caption.borderWidthPct / 100);
     ctx.lineJoin = "round";
@@ -161,10 +212,12 @@ export function drawCaption(
     });
   }
 
-  ctx.fillStyle = hexToRgba(caption.color, caption.opacity);
-  metrics.lines.forEach((line, index) => {
-    ctx.fillText(line, x, top + index * lineHeight + lineHeight / 2);
-  });
+  if (caption.style !== "hollow") {
+    ctx.fillStyle = hexToRgba(caption.color, caption.opacity);
+    metrics.lines.forEach((line, index) => {
+      ctx.fillText(line, x, top + index * lineHeight + lineHeight / 2);
+    });
+  }
 
   ctx.restore();
 }
