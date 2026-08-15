@@ -201,6 +201,24 @@ export function CaptionPanel() {
         />
       )}
 
+      <Slider
+        label={caption.style === "knockout" ? "Cutout strength" : "Opacity"}
+        value={caption.opacity}
+        min={0}
+        max={1}
+        step={0.01}
+        precision={2}
+        defaultValue={1}
+        disabled={off}
+        onChange={(v) => set("opacity", v)}
+      />
+      {caption.style === "knockout" && (
+        <p className="-mt-1 mb-1 text-[10px] leading-relaxed text-faint">
+          Lower this to make the letters see-through instead of fully
+          transparent — the box colour blends in rather than the raw photo.
+        </p>
+      )}
+
       {caption.style === "outline" && (
         <>
           <ColorField
@@ -277,6 +295,26 @@ export function CaptionPanel() {
             onChange={(v) => set("backgroundOpacity", v)}
           />
         </>
+      )}
+
+      <Toggle
+        label="Shadow"
+        checked={caption.shadowEnabled}
+        onChange={(v) => set("shadowEnabled", v)}
+      />
+
+      {caption.shadowEnabled && (
+        <Slider
+          label="Shadow opacity"
+          value={caption.shadowOpacity}
+          min={0}
+          max={1}
+          step={0.01}
+          precision={2}
+          defaultValue={0.5}
+          disabled={off}
+          onChange={(v) => set("shadowOpacity", v)}
+        />
       )}
 
       <Slider
