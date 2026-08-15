@@ -5,12 +5,14 @@ export {
   captionSchema,
   FRAME_TYPES,
   ASPECT_RATIOS,
+  CAPTION_STYLES,
   type EditRecipe,
   type Filters,
   type Border,
   type Caption,
   type FrameType,
   type AspectRatio,
+  type CaptionStyle,
 } from "./recipe/schema";
 
 export {

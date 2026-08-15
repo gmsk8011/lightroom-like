@@ -57,6 +57,8 @@ export function drawCaption(
 
   const textHeight = metrics.lines.length * lineHeight;
   const top = box.y + (box.height - textHeight) / 2;
+  const chipY = top - padding / 2;
+  const chipHeight = textHeight + padding;
 
   const x =
     caption.align === "left"
@@ -74,18 +76,46 @@ export function drawCaption(
       `${metrics.letterSpacing * scale}px`;
   }
 
+  if (caption.style === "knockout") {
+    // A knockout caption needs its box regardless of the background toggle —
+    // without one there's nothing for the letters to be cut out of.
+    ctx.fillStyle = hexToRgba(caption.backgroundColor, caption.backgroundOpacity);
+    ctx.fillRect(box.x, chipY, box.width, chipHeight);
+
+    // destination-out only reads the alpha of what's drawn — the fill colour
+    // here is arbitrary. This erases the letter shapes out of the box just
+    // painted, revealing the photo underneath through the text.
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = `rgba(0, 0, 0, ${caption.opacity})`;
+    metrics.lines.forEach((line, index) => {
+      ctx.fillText(line, x, top + index * lineHeight + lineHeight / 2);
+    });
+    ctx.globalCompositeOperation = "source-over";
+    ctx.restore();
+    return;
+  }
+
   if (caption.backgroundEnabled && caption.backgroundOpacity > 0) {
-    ctx.fillStyle = hexToRgba(
-      caption.backgroundColor,
-      caption.backgroundOpacity,
-    );
-    ctx.fillRect(box.x, top - padding / 2, box.width, textHeight + padding);
+    ctx.fillStyle = hexToRgba(caption.backgroundColor, caption.backgroundOpacity);
+    ctx.fillRect(box.x, chipY, box.width, chipHeight);
   }
 
   if (caption.shadowEnabled && caption.shadowOpacity > 0) {
     ctx.shadowColor = `rgba(0, 0, 0, ${caption.shadowOpacity})`;
     ctx.shadowBlur = fontSize * 0.25;
     ctx.shadowOffsetY = fontSize * 0.06;
+  }
+
+  if (caption.style === "outline" && caption.borderWidthPct > 0) {
+    // Stroke first, fill on top: strokeText centres its line on the glyph
+    // path, so the fill covers the inward half and leaves a clean outline
+    // rather than a stroke that reads as blurring the letterform.
+    ctx.strokeStyle = hexToRgba(caption.borderColor, caption.opacity);
+    ctx.lineWidth = fontSize * (caption.borderWidthPct / 100);
+    ctx.lineJoin = "round";
+    metrics.lines.forEach((line, index) => {
+      ctx.strokeText(line, x, top + index * lineHeight + lineHeight / 2);
+    });
   }
 
   ctx.fillStyle = hexToRgba(caption.color, caption.opacity);

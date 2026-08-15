@@ -37,6 +37,9 @@ const hexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "expected a #rrggbb colour");
 
+export const CAPTION_STYLES = ["fill", "outline", "knockout"] as const;
+export type CaptionStyle = (typeof CAPTION_STYLES)[number];
+
 export const filtersSchema = z.object({
   exposure: z.number().min(-5).max(5),
   contrast: z.number().min(-100).max(100),
@@ -81,6 +84,14 @@ export const captionSchema = z.object({
   color: hexColor,
   opacity: z.number().min(0).max(1),
   align: z.enum(["left", "center", "right"]),
+  /** "fill": plain coloured text (default). "outline": adds a stroke around
+   *  each glyph, using borderColor/borderWidthPct — classic caption look for
+   *  reading over a busy photo. "knockout": punches the text out of a solid
+   *  box (backgroundColor), so the photo shows through the letter shapes. */
+  style: z.enum(CAPTION_STYLES),
+  borderColor: hexColor,
+  /** Stroke width as a percent of the caption's own font size. */
+  borderWidthPct: z.number().min(0).max(20),
   /** Centre point of the caption block, as a percent of the full canvas.
    *  This is the only positioning mechanism — the caption is always a free
    *  overlay, draggable on the preview, and never influences frame layout. */

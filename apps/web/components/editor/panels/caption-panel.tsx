@@ -11,7 +11,7 @@ import {
   Toggle,
   cn,
 } from "@lrl/ui";
-import { DEFAULT_CAPTION, FONT_LABELS } from "@lrl/engine";
+import { DEFAULT_CAPTION, FONT_LABELS, type CaptionStyle } from "@lrl/engine";
 import { useCatalogStore } from "@/stores/catalog-store";
 import { useRecipeStore } from "@/stores/recipe-store";
 
@@ -22,6 +22,12 @@ const ALIGN_OPTIONS = [
 ] as const;
 
 const FONT_OPTIONS = FONT_LABELS.map(([value, label]) => ({ value, label }));
+
+const STYLE_OPTIONS: readonly { value: CaptionStyle; label: string }[] = [
+  { value: "fill", label: "Fill" },
+  { value: "outline", label: "Outline" },
+  { value: "knockout", label: "Knockout" },
+];
 
 /** Nine quick-pick spots, laid out to match their visual position. */
 const POSITION_PRESETS: { x: number; y: number }[] = [
@@ -178,12 +184,100 @@ export function CaptionPanel() {
         columns={4}
       />
 
-      <ColorField
-        label="Text colour"
-        value={caption.color}
-        disabled={off}
-        onChange={(v) => set("color", v)}
+      <Segmented
+        label="Style"
+        value={caption.style}
+        options={STYLE_OPTIONS}
+        onChange={(v) => set("style", v)}
+        columns={3}
       />
+
+      {caption.style !== "knockout" && (
+        <ColorField
+          label="Text colour"
+          value={caption.color}
+          disabled={off}
+          onChange={(v) => set("color", v)}
+        />
+      )}
+
+      {caption.style === "outline" && (
+        <>
+          <ColorField
+            label="Outline colour"
+            value={caption.borderColor}
+            disabled={off}
+            onChange={(v) => set("borderColor", v)}
+          />
+          <Slider
+            label="Outline width"
+            value={caption.borderWidthPct}
+            min={0}
+            max={20}
+            step={0.5}
+            precision={1}
+            defaultValue={8}
+            disabled={off}
+            onChange={(v) => set("borderWidthPct", v)}
+          />
+        </>
+      )}
+
+      {caption.style === "knockout" && (
+        <>
+          <p className="-mt-1 mb-1 text-[10px] leading-relaxed text-faint">
+            The text is cut out of this box, so the photo shows through the
+            letters.
+          </p>
+          <ColorField
+            label="Box colour"
+            value={caption.backgroundColor}
+            disabled={off}
+            onChange={(v) => set("backgroundColor", v)}
+          />
+          <Slider
+            label="Box opacity"
+            value={caption.backgroundOpacity}
+            min={0}
+            max={1}
+            step={0.01}
+            precision={2}
+            defaultValue={0.5}
+            disabled={off}
+            onChange={(v) => set("backgroundOpacity", v)}
+          />
+        </>
+      )}
+
+      {caption.style !== "knockout" && (
+        <Toggle
+          label="Background box"
+          checked={caption.backgroundEnabled}
+          onChange={(v) => set("backgroundEnabled", v)}
+        />
+      )}
+
+      {caption.style !== "knockout" && caption.backgroundEnabled && (
+        <>
+          <ColorField
+            label="Box colour"
+            value={caption.backgroundColor}
+            disabled={off}
+            onChange={(v) => set("backgroundColor", v)}
+          />
+          <Slider
+            label="Box opacity"
+            value={caption.backgroundOpacity}
+            min={0}
+            max={1}
+            step={0.01}
+            precision={2}
+            defaultValue={0.5}
+            disabled={off}
+            onChange={(v) => set("backgroundOpacity", v)}
+          />
+        </>
+      )}
 
       <Slider
         label="Size"
