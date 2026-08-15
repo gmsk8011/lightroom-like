@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Minus, Plus, RotateCcw, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import {
   aspectValue,
   captionBox,
@@ -34,9 +34,6 @@ const DRAG_HIT_PADDING = 10;
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 4;
-/** Multiplier used by the +/- toolbar buttons — a bigger, discrete jump is
- *  fine there since each click is a deliberate action. */
-const ZOOM_STEP = 1.25;
 /** Per-wheel-unit zoom factor exponent — see the wheel handler for why this
  *  is scaled by scroll distance instead of a fixed step. */
 const WHEEL_ZOOM_SENSITIVITY = 0.0008;
@@ -168,9 +165,12 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
 
   const cropMode = useUiStore((s) => s.cropMode);
   const setCropMode = useUiStore((s) => s.setCropMode);
+  // The straighten angle lives in the shared ui-store, not local state, so
+  // the Crop side panel can host its slider instead of the canvas overlay.
+  const cropRotation = useUiStore((s) => s.cropRotation);
+  const setCropRotation = useUiStore((s) => s.setCropRotation);
   const [cropRect, setCropRect] = React.useState<Crop2>({ x: 0, y: 0, width: 100, height: 100 });
   const [cropAspect, setCropAspect] = React.useState<AspectRatio>("original");
-  const [cropRotation, setCropRotation] = React.useState(0);
   const cropDragRef = React.useRef<{
     handle: CropHandle;
     startPointerPct: { x: number; y: number };
@@ -476,8 +476,7 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
 
     const canvasTop = (box.height - displayH) / 2;
     const canvasBottom = canvasTop + displayH;
-    // The toolbar is two rows now (straighten, then aspect/cancel/apply).
-    const toolbarHeight = 76;
+    const toolbarHeight = 44;
     const gap = 12;
     const nextTop =
       box.height - canvasBottom >= toolbarHeight + gap
@@ -514,8 +513,6 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
     else store.setCrop(photo.id, { ...cropRect, rotation: cropRotation });
     setCropMode(false);
   }, [cropRect, cropRotation, photo.id, setCropMode]);
-
-  const resetCropRotation = React.useCallback(() => setCropRotation(0), []);
 
   const cancelCrop = React.useCallback(() => {
     setCropMode(false);
@@ -811,22 +808,12 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
     return () => container.removeEventListener("wheel", onWheel);
   }, [zoomAt, cropMode]);
 
-  const zoomButton = React.useCallback(
-    (factor: number) => {
-      const container = containerRef.current;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      zoomAt(factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
-    },
-    [zoomAt],
-  );
-
+  // No visible zoom toolbar — double-click is the only reset affordance,
+  // so a zoomed-in photo is never stuck with no way back to Fit.
   const resetZoom = React.useCallback(() => {
     setZoom(null);
     setPan({ x: 0, y: 0 });
   }, []);
-
-  const zoomPct = zoom === null ? null : Math.round(zoom * 100);
 
   /* -------------------------------------------------------------- view */
 
@@ -857,105 +844,51 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
           onPointerMove={cropMode ? onCropPointerMove : onPointerMove}
           onPointerUp={cropMode ? endCropDrag : endDrag}
           onPointerCancel={cropMode ? endCropDrag : endDrag}
+          onDoubleClick={cropMode ? undefined : resetZoom}
         />
-      )}
-
-      {ready && !error && !cropMode && (
-        <div className="pointer-events-auto absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-line bg-panel/95 px-1.5 py-1 shadow-lg backdrop-blur">
-          <button
-            type="button"
-            aria-label="Zoom out"
-            onClick={() => zoomButton(1 / ZOOM_STEP)}
-            className="grid size-6 place-items-center rounded-full text-muted transition-colors hover:bg-raised hover:text-fg"
-          >
-            <Minus size={13} />
-          </button>
-          <button
-            type="button"
-            onClick={resetZoom}
-            className="min-w-11 px-1 text-center text-[11px] text-muted transition-colors hover:text-fg"
-            title="Reset to fit"
-          >
-            {zoomPct === null ? "Fit" : `${zoomPct}%`}
-          </button>
-          <button
-            type="button"
-            aria-label="Zoom in"
-            onClick={() => zoomButton(ZOOM_STEP)}
-            className="grid size-6 place-items-center rounded-full text-muted transition-colors hover:bg-raised hover:text-fg"
-          >
-            <Plus size={13} />
-          </button>
-        </div>
       )}
 
       {cropMode && (
         <div
-          className="pointer-events-auto absolute left-1/2 flex -translate-x-1/2 flex-col gap-1.5 rounded-2xl border border-line bg-panel/95 px-2 py-1.5 shadow-lg backdrop-blur"
+          className="pointer-events-auto absolute left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-line bg-panel/95 px-2 py-1.5 shadow-lg backdrop-blur"
           style={{ top: `${Math.round(cropToolbarTop)}px` }}
         >
-          <div className="flex items-center gap-1.5 px-0.5">
-            <button
-              type="button"
-              aria-label="Reset straighten"
-              title="Reset straighten"
-              onClick={resetCropRotation}
-              className="grid size-5 shrink-0 place-items-center rounded-full text-faint transition-colors hover:bg-raised hover:text-fg"
-            >
-              <RotateCcw size={11} />
-            </button>
-            <input
-              type="range"
-              aria-label="Straighten"
-              min={-45}
-              max={45}
-              step={0.5}
-              value={cropRotation}
-              onChange={(e) => setCropRotation(Number(e.target.value))}
-              className="h-1 w-36 shrink-0 cursor-pointer accent-accent"
-            />
-            <span className="w-10 shrink-0 text-right text-[11px] tabular-nums text-muted">
-              {cropRotation.toFixed(1)}°
-            </span>
+          <div className="flex items-center gap-0.5">
+            {CROP_ASPECTS.map((a) => (
+              <button
+                key={a.value}
+                type="button"
+                onClick={() => applyAspect(a.value)}
+                className={cn(
+                  "rounded-full px-2 py-1 text-[11px] transition-colors",
+                  cropAspect === a.value
+                    ? "bg-accent/20 text-fg"
+                    : "text-muted hover:bg-raised hover:text-fg",
+                )}
+              >
+                {a.label}
+              </button>
+            ))}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-0.5">
-              {CROP_ASPECTS.map((a) => (
-                <button
-                  key={a.value}
-                  type="button"
-                  onClick={() => applyAspect(a.value)}
-                  className={cn(
-                    "rounded-full px-2 py-1 text-[11px] transition-colors",
-                    cropAspect === a.value
-                      ? "bg-accent/20 text-fg"
-                      : "text-muted hover:bg-raised hover:text-fg",
-                  )}
-                >
-                  {a.label}
-                </button>
-              ))}
-            </div>
-            <div className="h-4 w-px bg-line" />
-            <button
-              type="button"
-              aria-label="Cancel crop"
-              title="Cancel"
-              onClick={cancelCrop}
-              className="grid size-6 place-items-center rounded-full text-muted transition-colors hover:bg-danger/20 hover:text-danger"
-            >
-              <X size={13} />
-            </button>
-            <button
-              type="button"
-              aria-label="Apply crop"
-              title="Apply"
-              onClick={commitCrop}
-              className="grid size-6 place-items-center rounded-full bg-accent text-white transition-colors hover:bg-accent/90"
-            >
-              <Check size={13} />
-            </button>
-          </div>
+          <div className="h-4 w-px bg-line" />
+          <button
+            type="button"
+            aria-label="Cancel crop"
+            title="Cancel"
+            onClick={cancelCrop}
+            className="grid size-6 place-items-center rounded-full text-muted transition-colors hover:bg-danger/20 hover:text-danger"
+          >
+            <X size={13} />
+          </button>
+          <button
+            type="button"
+            aria-label="Apply crop"
+            title="Apply"
+            onClick={commitCrop}
+            className="grid size-6 place-items-center rounded-full bg-accent text-white transition-colors hover:bg-accent/90"
+          >
+            <Check size={13} />
+          </button>
         </div>
       )}
     </div>

@@ -13,13 +13,19 @@ export const EFFECT_FILTERS: FilterDefinition[] = [
     precision: 0,
     defaultValue: 0,
     needsBlur: true,
-    // A straightforward blend toward the shared blur reference — it reduces
-    // fine-grained noise the same way a Gaussian-blur denoiser does, but
-    // isn't edge-aware, so pushed hard it softens real detail along with
-    // the noise. There's no bilateral/edge-preserving pass in this pipeline.
+    // Smooths luminance only, not full RGB. u_blur is a blur of the raw
+    // source, taken before this pass's earlier white-balance/vibrance/
+    // saturation adjustments — blending c's colour straight toward it would
+    // partly undo that grading and read as a saturation shift. Rescaling by
+    // the luma ratio keeps c's already-graded hue and chroma exactly as they
+    // were, denoising the way most raw tools' luminance-NR slider does,
+    // while leaving colour (chroma) noise untouched — there's no separate
+    // chroma-only pass in this pipeline.
     glsl: `
-      vec3 blurred = srgbToLinear(texture(u_blur, v_uv).rgb);
-      c = mix(c, blurred, v / 100.0);
+      float lumaCurrent = luma(c);
+      float lumaBlurred = luma(srgbToLinear(texture(u_blur, v_uv).rgb));
+      float lumaSmoothed = mix(lumaCurrent, lumaBlurred, v / 100.0);
+      c *= lumaCurrent > 0.0005 ? lumaSmoothed / lumaCurrent : 1.0;
     `,
   },
   {

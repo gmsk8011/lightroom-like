@@ -18,6 +18,10 @@ interface UiState {
   selectedCaptionId: string | null;
   /** Whether the crop tool is active on the preview canvas. */
   cropMode: boolean;
+  /** Draft straighten angle while the crop tool is open — lives here rather
+   *  than as local state in the canvas so the Crop side panel can host the
+   *  slider instead of the floating canvas toolbar. */
+  cropRotation: number;
   toggleLeft: () => void;
   toggleRight: () => void;
   toggleFilmstrip: () => void;
@@ -25,6 +29,7 @@ interface UiState {
   setShowOriginal: (show: boolean) => void;
   setSelectedCaptionId: (id: string | null) => void;
   setCropMode: (active: boolean) => void;
+  setCropRotation: (degrees: number) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -35,6 +40,7 @@ export const useUiStore = create<UiState>((set) => ({
   showOriginal: false,
   selectedCaptionId: null,
   cropMode: false,
+  cropRotation: 0,
   toggleLeft: () => set((s) => ({ leftOpen: !s.leftOpen })),
   toggleRight: () => set((s) => ({ rightOpen: !s.rightOpen })),
   toggleFilmstrip: () => set((s) => ({ filmstripOpen: !s.filmstripOpen })),
@@ -42,4 +48,5 @@ export const useUiStore = create<UiState>((set) => ({
   setShowOriginal: (showOriginal) => set({ showOriginal }),
   setSelectedCaptionId: (selectedCaptionId) => set({ selectedCaptionId }),
   setCropMode: (cropMode) => set({ cropMode }),
+  setCropRotation: (cropRotation) => set({ cropRotation }),
 }));
