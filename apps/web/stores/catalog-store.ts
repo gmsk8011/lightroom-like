@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import type { ImportResult, Photo } from "@/lib/catalog/types";
 import { thumbnails } from "@/lib/thumbnails/service";
+import { clearAllRecipes, deleteRecipes } from "@/lib/persistence/db";
 import { useRecipeStore } from "./recipe-store";
 
 export interface SelectOptions {
@@ -120,6 +121,10 @@ export const useCatalogStore = create<CatalogState>((set, get) => ({
       directoryName: null,
       skipped: 0,
     });
+    // Immediate, not the debounced mirror sync.ts does for ordinary edits —
+    // reloading in the gap before that debounce fired would let every
+    // recipe survive in IndexedDB and silently reattach on the next import.
+    void clearAllRecipes().catch(() => {});
   },
 
   removePhoto: (id) => {
@@ -142,6 +147,10 @@ export const useCatalogStore = create<CatalogState>((set, get) => ({
       return { order, byId, selected, activeId, anchorId };
     });
     useRecipeStore.getState().discard([id]);
+    // Same reasoning as clear() above — this photo's recipe needs to be
+    // gone from IndexedDB now, not up to 500ms from now, so re-adding the
+    // same file (even right after a reload) starts fresh.
+    void deleteRecipes([id]).catch(() => {});
   },
 
   removeSelected: () => {
