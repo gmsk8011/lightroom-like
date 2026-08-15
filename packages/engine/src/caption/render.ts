@@ -2,6 +2,14 @@ import type { FrameCanvasContext, Rect } from "../frames/types";
 import type { Caption } from "../recipe/schema";
 import { captionText, fontString, type CaptionMetrics } from "./layout";
 
+/** `letterSpacing` is on both 2D context types but TS's DOM lib doesn't
+ *  share a common interface for it, so reading/writing across the
+ *  CanvasRenderingContext2D / OffscreenCanvasRenderingContext2D split needs
+ *  a narrow structural type rather than casting between the two directly. */
+interface WithLetterSpacing {
+  letterSpacing: string;
+}
+
 function hexToRgba(hex: string, alpha: number): string {
   const value = hex.replace("#", "");
   const num = Number.parseInt(value, 16);
@@ -77,20 +85,45 @@ export function drawCaption(
   }
 
   if (caption.style === "knockout") {
-    // A knockout caption needs its box regardless of the background toggle —
-    // without one there's nothing for the letters to be cut out of.
-    ctx.fillStyle = hexToRgba(caption.backgroundColor, caption.backgroundOpacity);
-    ctx.fillRect(box.x, chipY, box.width, chipHeight);
+    // destination-out erases whatever is already painted on the surface
+    // it's called on. Doing that directly on the main canvas would erase
+    // into nothing, because the photo pixels under the box were already
+    // overwritten by the box's own fill — there's no photo "layer" left to
+    // reveal there. Compositing the box+cutout in a separate buffer first,
+    // then drawing that buffer onto the main canvas normally, means the
+    // holes reveal whatever the main canvas already has underneath — the
+    // photo — instead of revealing nothing.
+    const maskWidth = Math.max(1, Math.ceil(box.width));
+    const maskHeight = Math.max(1, Math.ceil(box.height));
+    const mask = new OffscreenCanvas(maskWidth, maskHeight);
+    const maskCtx = mask.getContext("2d");
 
-    // destination-out only reads the alpha of what's drawn — the fill colour
-    // here is arbitrary. This erases the letter shapes out of the box just
-    // painted, revealing the photo underneath through the text.
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.fillStyle = `rgba(0, 0, 0, ${caption.opacity})`;
-    metrics.lines.forEach((line, index) => {
-      ctx.fillText(line, x, top + index * lineHeight + lineHeight / 2);
-    });
-    ctx.globalCompositeOperation = "source-over";
+    if (maskCtx) {
+      maskCtx.font = ctx.font;
+      maskCtx.textAlign = ctx.textAlign;
+      maskCtx.textBaseline = ctx.textBaseline;
+      if ("letterSpacing" in maskCtx) {
+        (maskCtx as unknown as WithLetterSpacing).letterSpacing =
+          (ctx as unknown as WithLetterSpacing).letterSpacing;
+      }
+
+      maskCtx.fillStyle = hexToRgba(caption.backgroundColor, caption.backgroundOpacity);
+      maskCtx.fillRect(0, 0, maskWidth, maskHeight);
+
+      // Alpha is all that matters for destination-out — the fill colour is
+      // arbitrary. This punches the letter shapes out of the box just
+      // painted, within the isolated mask buffer.
+      maskCtx.globalCompositeOperation = "destination-out";
+      maskCtx.fillStyle = `rgba(0, 0, 0, ${caption.opacity})`;
+      const localX = x - box.x;
+      const localTop = top - box.y;
+      metrics.lines.forEach((line, index) => {
+        maskCtx.fillText(line, localX, localTop + index * lineHeight + lineHeight / 2);
+      });
+
+      ctx.drawImage(mask, box.x, box.y);
+    }
+
     ctx.restore();
     return;
   }
