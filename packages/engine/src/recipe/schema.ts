@@ -60,6 +60,9 @@ export const filtersSchema = z.object({
   clarity: z.number().min(-100).max(100),
   denoise: z.number().min(0).max(100),
   orton: z.number().min(0).max(100),
+  haze: z.number().min(0).max(100),
+  mist: z.number().min(0).max(100),
+  diffusion: z.number().min(0).max(100),
   grain: z.number().min(0).max(100),
   vignette: z.number().min(-100).max(100),
   /** id of the preset this was seeded from, purely for UI display */
@@ -122,6 +125,17 @@ export const captionSchema = z.object({
    *  styles) and the knockout box — whichever box is currently showing. */
   boxWidthPct: z.number().min(0).max(100),
   boxHeightPct: z.number().min(0).max(100),
+  /** Blurs the photo directly behind the caption's box before anything else
+   *  is painted, so text stays readable over busy backgrounds without a
+   *  solid background box. Independent of `backgroundEnabled` — the two can
+   *  combine (a tinted, blurred pane) or either can be used alone. */
+  backdropBlurEnabled: z.boolean(),
+  backdropBlurAmount: z.number().min(0).max(100),
+  /** A soft, colour-matched halo behind the glyphs themselves, drawn under
+   *  the ordinary drop shadow — distinct from `backdropBlurEnabled`, which
+   *  blurs the photo rather than glowing the text. */
+  glowEnabled: z.boolean(),
+  glowAmount: z.number().min(0).max(100),
 });
 export type Caption = z.infer<typeof captionSchema>;
 

@@ -14,6 +14,9 @@ export const DEFAULT_FILTERS: Filters = {
   clarity: 0,
   denoise: 0,
   orton: 0,
+  haze: 0,
+  mist: 0,
+  diffusion: 0,
   grain: 0,
   vignette: 0,
   preset: null,
@@ -58,6 +61,10 @@ export const CAPTION_TEMPLATE: Omit<Caption, "id"> = {
   backgroundOpacity: 0.5,
   boxWidthPct: 0,
   boxHeightPct: 0,
+  backdropBlurEnabled: false,
+  backdropBlurAmount: 40,
+  glowEnabled: false,
+  glowAmount: 40,
 };
 
 function newCaptionId(): string {
@@ -90,6 +97,21 @@ export function cloneRecipe(recipe: EditRecipe): EditRecipe {
     border: { ...recipe.border },
     crop: recipe.crop ? { ...recipe.crop } : null,
     captions: recipe.captions.map((c) => ({ ...c })),
+  };
+}
+
+/** Fills in defaults for any field missing from a recipe that was persisted
+ *  before that field existed — schema evolution shouldn't be able to crash
+ *  the UI on a photo edited before a slider was added. Unknown/extra fields
+ *  on the input are harmlessly dropped by the explicit shape below. */
+export function normalizeRecipe(input: Partial<EditRecipe> | null | undefined): EditRecipe {
+  if (!input) return createDefaultRecipe();
+  return {
+    version: 1,
+    filters: { ...DEFAULT_FILTERS, ...input.filters },
+    border: { ...DEFAULT_BORDER, ...input.border },
+    crop: input.crop ?? DEFAULT_CROP,
+    captions: (input.captions ?? []).map((c) => ({ ...CAPTION_TEMPLATE, ...c })),
   };
 }
 

@@ -10,6 +10,7 @@ import { useCatalogStore } from "@/stores/catalog-store";
 import { useRecipeStore } from "@/stores/recipe-store";
 import * as db from "@/lib/persistence/db";
 import { startPersistenceSync } from "@/lib/persistence/sync";
+import { normalizeRecipe, type EditRecipe } from "@lrl/engine";
 
 type RestoreState =
   | { status: "idle" }
@@ -83,7 +84,11 @@ export function SessionRestore() {
     void (async () => {
       const recipes = await withTimeout(db.loadAllRecipes(), 4000).catch(() => ({}));
       if (!cancelled && Object.keys(recipes).length > 0) {
-        useRecipeStore.getState().hydrate(recipes);
+        const normalized: Record<string, EditRecipe> = {};
+        for (const [id, recipe] of Object.entries(recipes)) {
+          normalized[id] = normalizeRecipe(recipe);
+        }
+        useRecipeStore.getState().hydrate(normalized);
       }
 
       const session = await withTimeout(db.loadSession(), 4000).catch(() => null);

@@ -404,6 +404,52 @@ export function CaptionPanel() {
           )}
 
           <Toggle
+            label="Backdrop blur"
+            checked={caption.backdropBlurEnabled}
+            onChange={(v) => set("backdropBlurEnabled", v)}
+          />
+          {caption.backdropBlurEnabled && (
+            <>
+              <Slider
+                label="Backdrop blur amount"
+                value={caption.backdropBlurAmount}
+                min={0}
+                max={100}
+                step={1}
+                precision={0}
+                defaultValue={40}
+                onChange={(v) => set("backdropBlurAmount", v)}
+              />
+              <p className="-mt-1 mb-1 text-[10px] leading-relaxed text-faint">
+                Blurs the photo behind the caption box, so text stays
+                readable over busy backgrounds without a solid panel.
+              </p>
+            </>
+          )}
+
+          {caption.style !== "knockout" && caption.style !== "frosted" && (
+            <Toggle
+              label="Glow"
+              checked={caption.glowEnabled}
+              onChange={(v) => set("glowEnabled", v)}
+            />
+          )}
+          {caption.style !== "knockout" &&
+            caption.style !== "frosted" &&
+            caption.glowEnabled && (
+              <Slider
+                label="Glow amount"
+                value={caption.glowAmount}
+                min={0}
+                max={100}
+                step={1}
+                precision={0}
+                defaultValue={40}
+                onChange={(v) => set("glowAmount", v)}
+              />
+            )}
+
+          <Toggle
             label="Shadow"
             checked={caption.shadowEnabled}
             onChange={(v) => set("shadowEnabled", v)}

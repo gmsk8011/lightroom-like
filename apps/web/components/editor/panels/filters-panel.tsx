@@ -35,6 +35,9 @@ const EFFECTS: Control[] = [
   { key: "denoise", label: "Denoise", min: 0, max: 100, step: 1, precision: 0 },
   { key: "clarity", label: "Clarity", min: -100, max: 100, step: 1, precision: 0 },
   { key: "orton", label: "Orton Glow", min: 0, max: 100, step: 1, precision: 0 },
+  { key: "haze", label: "Haze", min: 0, max: 100, step: 1, precision: 0 },
+  { key: "mist", label: "Mist", min: 0, max: 100, step: 1, precision: 0 },
+  { key: "diffusion", label: "Diffusion", min: 0, max: 100, step: 1, precision: 0 },
   { key: "vignette", label: "Vignette", min: -100, max: 100, step: 1, precision: 0 },
   { key: "grain", label: "Grain", min: 0, max: 100, step: 1, precision: 0 },
 ];

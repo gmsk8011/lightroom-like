@@ -19,6 +19,58 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+/** Blurs whatever is already painted on `ctx.canvas` within `box`, in place —
+ *  the "backdrop blur" caption effect. Reads and redraws a padded region
+ *  (not just `box` itself) because `ctx.filter = "blur()"` samples outside
+ *  the drawn image as transparent, which would otherwise darken the box's
+ *  own edges instead of blending into the untouched photo around it. */
+function blurBehind(ctx: FrameCanvasContext, box: Rect, blurPx: number): void {
+  if (blurPx <= 0 || box.width <= 0 || box.height <= 0) return;
+
+  const canvas = ctx.canvas;
+  const cw = canvas.width;
+  const ch = canvas.height;
+
+  const pad = Math.ceil(blurPx * 2);
+  const bx = Math.round(box.x);
+  const by = Math.round(box.y);
+  const bw = Math.max(1, Math.round(box.width));
+  const bh = Math.max(1, Math.round(box.height));
+
+  const sx = bx - pad;
+  const sy = by - pad;
+  const sw = bw + pad * 2;
+  const sh = bh + pad * 2;
+
+  // Clamp the region actually read to the canvas bounds, keeping track of
+  // where that clamped read lands inside the (unclamped) padded buffer.
+  const readX = Math.max(0, sx);
+  const readY = Math.max(0, sy);
+  const readW = Math.min(sw - (readX - sx), cw - readX);
+  const readH = Math.min(sh - (readY - sy), ch - readY);
+  if (readW <= 0 || readH <= 0) return;
+
+  const snap = new OffscreenCanvas(sw, sh);
+  const sctx = snap.getContext("2d");
+  if (!sctx) return;
+  sctx.drawImage(
+    canvas as CanvasImageSource,
+    readX,
+    readY,
+    readW,
+    readH,
+    readX - sx,
+    readY - sy,
+    readW,
+    readH,
+  );
+
+  ctx.save();
+  ctx.filter = `blur(${blurPx}px)`;
+  ctx.drawImage(snap, sx, sy, sw, sh);
+  ctx.restore();
+}
+
 /**
  * The caption's bounding box, centred on (positionX%, positionY%) of the
  * canvas — the only positioning mechanism. This is deliberately independent
@@ -87,6 +139,14 @@ export function drawCaption(
       : caption.align === "right"
         ? box.x + box.width - padding
         : box.x + box.width / 2;
+
+  // Runs before anything else is painted, and applies to every style
+  // (knockout included, where the letters end up revealing the blurred
+  // photo rather than the sharp one) — it blurs the photo as it stood the
+  // moment this caption started drawing, not the caption itself.
+  if (caption.backdropBlurEnabled && caption.backdropBlurAmount > 0) {
+    blurBehind(ctx, box, (caption.backdropBlurAmount / 100) * fontSize * 0.6);
+  }
 
   ctx.save();
   ctx.font = fontString(caption, fontSize);
@@ -186,6 +246,26 @@ export function drawCaption(
   ) {
     ctx.fillStyle = hexToRgba(caption.backgroundColor, caption.backgroundOpacity);
     ctx.fillRect(box.x, box.y, box.width, box.height);
+  }
+
+  if (caption.glowEnabled && caption.glowAmount > 0) {
+    // A separate save/restore'd pass, drawn before the drop shadow and the
+    // crisp outline/fill below it — canvas only honours one shadow config
+    // per draw call, so glow (blurred, no offset) and drop shadow (offset,
+    // not blurred as far) need their own passes rather than sharing one.
+    // Filled twice: a single native shadow pass reads as fairly faint.
+    ctx.save();
+    ctx.shadowColor = hexToRgba(caption.color, Math.min(1, caption.opacity + 0.35));
+    ctx.shadowBlur = fontSize * (caption.glowAmount / 100) * 0.6;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.fillStyle = hexToRgba(caption.color, caption.opacity);
+    metrics.lines.forEach((line, index) => {
+      const ly = top + index * lineHeight + lineHeight / 2;
+      ctx.fillText(line, x, ly);
+      ctx.fillText(line, x, ly);
+    });
+    ctx.restore();
   }
 
   if (caption.shadowEnabled && caption.shadowOpacity > 0) {

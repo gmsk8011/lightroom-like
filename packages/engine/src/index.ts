@@ -25,6 +25,7 @@ export {
   createCaption,
   createDefaultRecipe,
   cloneRecipe,
+  normalizeRecipe,
   isIdentityRecipe,
   areFiltersDefault,
 } from "./recipe/defaults";
