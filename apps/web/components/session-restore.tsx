@@ -16,6 +16,26 @@ type RestoreState =
   | { status: "prompt"; handle: FileSystemDirectoryHandle; name: string }
   | { status: "restoring"; name: string };
 
+/** IndexedDB can hang rather than reject — a stuck connection from another
+ *  tab, private-browsing quirks, etc. Restoring the last session is a
+ *  nicety; it should give up rather than leave the app stuck deciding
+ *  whether to show anything. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("timed out")), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err: unknown) => {
+        clearTimeout(timer);
+        reject(err as Error);
+      },
+    );
+  });
+}
+
 /**
  * Runs once at app start: rehydrates persisted recipes, then tries to
  * reopen the last folder. A still-granted permission restores silently; a
@@ -52,13 +72,21 @@ export function SessionRestore() {
   React.useEffect(() => {
     let cancelled = false;
 
+    // Wired up immediately and unconditionally — if anything below (reading
+    // IndexedDB, re-walking the restored folder) fails or hangs, ongoing
+    // saves for whatever happens in *this* session still have to work, or
+    // nothing would persist for the *next* reload either. Restoring the
+    // last session is a nicety layered on top; it must never be a
+    // precondition for saving the current one.
+    startPersistenceSync();
+
     void (async () => {
-      const recipes = await db.loadAllRecipes().catch(() => ({}));
+      const recipes = await withTimeout(db.loadAllRecipes(), 4000).catch(() => ({}));
       if (!cancelled && Object.keys(recipes).length > 0) {
         useRecipeStore.getState().hydrate(recipes);
       }
 
-      const session = await db.loadSession().catch(() => null);
+      const session = await withTimeout(db.loadSession(), 4000).catch(() => null);
       if (!cancelled && session) {
         const { directoryHandle, directoryName } = session;
         try {
@@ -74,8 +102,6 @@ export function SessionRestore() {
           await db.clearSession().catch(() => {});
         }
       }
-
-      startPersistenceSync();
     })();
 
     return () => {
@@ -90,34 +116,33 @@ export function SessionRestore() {
 
   if (state.status === "prompt") {
     return (
-      <div className="pointer-events-none fixed inset-x-0 top-14 z-50 flex justify-center">
-        <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1.5 shadow-lg">
-          <FolderOpen size={14} className="shrink-0 text-accent" />
-          <span className="text-xs text-fg">
-            Reopen &ldquo;{state.name}&rdquo; to restore your last session?
-          </span>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={async () => {
-              const granted = await state.handle
-                .requestPermission?.({ mode: "readwrite" })
-                .catch(() => "denied" as const);
-              if (granted === "granted") await restore(state.handle, state.name);
-              else await dismiss();
-            }}
-          >
-            Reopen
-          </Button>
-          <button
-            type="button"
-            aria-label="Dismiss"
-            onClick={() => void dismiss()}
-            className="text-faint transition-colors hover:text-fg"
-          >
-            <X size={14} />
-          </button>
-        </div>
+      <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-3 border-b border-accent/40 bg-accent/15 px-4 py-2.5 shadow-lg backdrop-blur">
+        <FolderOpen size={16} className="shrink-0 text-accent" />
+        <span className="text-sm text-fg">
+          Reopen &ldquo;{state.name}&rdquo; to restore your last session — the
+          browser needs you to confirm access again after a reload.
+        </span>
+        <Button
+          size="sm"
+          variant="primary"
+          onClick={async () => {
+            const granted = await state.handle
+              .requestPermission?.({ mode: "readwrite" })
+              .catch(() => "denied" as const);
+            if (granted === "granted") await restore(state.handle, state.name);
+            else await dismiss();
+          }}
+        >
+          Reopen folder
+        </Button>
+        <button
+          type="button"
+          aria-label="Dismiss"
+          onClick={() => void dismiss()}
+          className="shrink-0 text-faint transition-colors hover:text-fg"
+        >
+          <X size={16} />
+        </button>
       </div>
     );
   }
