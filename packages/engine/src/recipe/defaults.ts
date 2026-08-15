@@ -50,6 +50,8 @@ export const DEFAULT_CAPTION: Caption = {
   backgroundEnabled: false,
   backgroundColor: "#000000",
   backgroundOpacity: 0.5,
+  boxWidthPct: 0,
+  boxHeightPct: 0,
 };
 
 export function createDefaultRecipe(): EditRecipe {

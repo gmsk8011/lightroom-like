@@ -104,6 +104,14 @@ export const captionSchema = z.object({
   backgroundEnabled: z.boolean(),
   backgroundColor: hexColor,
   backgroundOpacity: z.number().min(0).max(1),
+  /** Extra box size, as a percent of the canvas width/height. 0 means
+   *  "auto" — the box tightly fits the text, as it always did before these
+   *  existed. A non-zero value is a floor, not a fixed size: the box is
+   *  never forced smaller than the text needs, only ever grown to at least
+   *  this size. Applies to both the optional background chip (fill/outline
+   *  styles) and the knockout box — whichever box is currently showing. */
+  boxWidthPct: z.number().min(0).max(100),
+  boxHeightPct: z.number().min(0).max(100),
 });
 export type Caption = z.infer<typeof captionSchema>;
 

@@ -264,6 +264,32 @@ export function CaptionPanel() {
             disabled={off}
             onChange={(v) => set("backgroundOpacity", v)}
           />
+          <Slider
+            label="Box width"
+            value={caption.boxWidthPct}
+            min={0}
+            max={100}
+            step={0.5}
+            precision={1}
+            defaultValue={0}
+            disabled={off}
+            onChange={(v) => set("boxWidthPct", v)}
+          />
+          <Slider
+            label="Box height"
+            value={caption.boxHeightPct}
+            min={0}
+            max={100}
+            step={0.5}
+            precision={1}
+            defaultValue={0}
+            disabled={off}
+            onChange={(v) => set("boxHeightPct", v)}
+          />
+          <p className="-mt-1 mb-1 text-[10px] leading-relaxed text-faint">
+            0 fits the box tightly to the text. Above that, it's a minimum —
+            the box only ever grows to fit, never shrinks the text.
+          </p>
         </>
       )}
 
@@ -293,6 +319,28 @@ export function CaptionPanel() {
             defaultValue={0.5}
             disabled={off}
             onChange={(v) => set("backgroundOpacity", v)}
+          />
+          <Slider
+            label="Box width"
+            value={caption.boxWidthPct}
+            min={0}
+            max={100}
+            step={0.5}
+            precision={1}
+            defaultValue={0}
+            disabled={off}
+            onChange={(v) => set("boxWidthPct", v)}
+          />
+          <Slider
+            label="Box height"
+            value={caption.boxHeightPct}
+            min={0}
+            max={100}
+            step={0.5}
+            precision={1}
+            defaultValue={0}
+            disabled={off}
+            onChange={(v) => set("boxHeightPct", v)}
           />
         </>
       )}

@@ -25,6 +25,11 @@ function hexToRgba(hex: string, alpha: number): string {
  * of the frame's layout (border/image rects): the caption is a pure overlay
  * painted on top of the finished frame, so resizing it or moving it never
  * changes the canvas or shrinks the photo.
+ *
+ * boxWidthPct/boxHeightPct are a floor, not a fixed size: at 0 (the default)
+ * the box tightly fits the text, exactly as it always did. A non-zero value
+ * only ever grows the box — it can never clip text by shrinking below what
+ * the text needs.
  */
 export function captionBox(
   canvasWidth: number,
@@ -33,18 +38,22 @@ export function captionBox(
   metrics: CaptionMetrics,
   scale: number,
 ): Rect {
-  const blockHeight = metrics.blockHeight * scale;
+  const autoHeight = metrics.blockHeight * scale;
   // Text alignment shifts text within this box, not the box itself — so
   // dragging always moves the caption's visual centre, regardless of align.
-  const blockWidth = metrics.maxLineWidth * scale + metrics.padding * scale * 2;
+  const autoWidth = metrics.maxLineWidth * scale + metrics.padding * scale * 2;
+
+  const width = Math.max(autoWidth, canvasWidth * (caption.boxWidthPct / 100));
+  const height = Math.max(autoHeight, canvasHeight * (caption.boxHeightPct / 100));
+
   const centerX = canvasWidth * (caption.positionX / 100);
   const centerY = canvasHeight * (caption.positionY / 100);
 
   return {
-    x: centerX - blockWidth / 2,
-    y: centerY - blockHeight / 2,
-    width: blockWidth,
-    height: blockHeight,
+    x: centerX - width / 2,
+    y: centerY - height / 2,
+    width,
+    height,
   };
 }
 
@@ -64,9 +73,10 @@ export function drawCaption(
   const padding = metrics.padding * scale;
 
   const textHeight = metrics.lines.length * lineHeight;
+  // Text is centred within the box on both axes — when the box is grown
+  // past its auto-fit size (via boxWidthPct/boxHeightPct), the extra room
+  // appears as even space around the text rather than shifting it off-centre.
   const top = box.y + (box.height - textHeight) / 2;
-  const chipY = top - padding / 2;
-  const chipHeight = textHeight + padding;
 
   const x =
     caption.align === "left"
@@ -130,7 +140,7 @@ export function drawCaption(
 
   if (caption.backgroundEnabled && caption.backgroundOpacity > 0) {
     ctx.fillStyle = hexToRgba(caption.backgroundColor, caption.backgroundOpacity);
-    ctx.fillRect(box.x, chipY, box.width, chipHeight);
+    ctx.fillRect(box.x, box.y, box.width, box.height);
   }
 
   if (caption.shadowEnabled && caption.shadowOpacity > 0) {
