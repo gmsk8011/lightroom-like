@@ -1,0 +1,22 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace", "@lrl/web"],
+      "port": 3210
+    },
+    {
+      "name": "car-recommender",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "/Users/adarshsharma/Documents/car-recommender"
+      ],
+      "port": 3310
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+node_modules/
+.next/
+dist/
+out/
+.turbo/
+coverage/
+
+.env
+.env.local
+.env*.local
+
+.DS_Store
+*.log
+npm-debug.log*
+
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# Dev-only sample photos generated for local testing
+apps/web/public/__dev/
+
+# Local Claude Code tool-permission settings — not project config
+.claude/settings.local.json
