@@ -50,6 +50,26 @@ export const FUJIFILM_PRESETS: FilterPreset[] = [
     },
   },
   {
+    // A community film-recipe (Classic Chrome base, DR400, strong grain,
+    // warm WB shift) rather than a stock in-camera simulation, chasing the
+    // rich-but-soft, warm-highlight look of Kodak Portra 800 — heavier grain
+    // and a lower, huskier contrast/clarity than Classic Chrome alone.
+    id: "fuji-kodak-portra-800-v3",
+    label: "Kodak Portra 800 v3",
+    overrides: {
+      exposure: 0.3,
+      contrast: 4,
+      highlights: -20,
+      shadows: -5,
+      temperature: 14,
+      tint: 3,
+      vibrance: 14,
+      saturation: 18,
+      clarity: -16,
+      grain: 32,
+    },
+  },
+  {
     id: "fuji-pro-neg-hi",
     label: "PRO Neg. Hi",
     overrides: {
