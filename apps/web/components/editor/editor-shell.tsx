@@ -12,11 +12,15 @@ import { RightRail } from "./right-rail";
 import { CanvasStage } from "./canvas-stage";
 import { Filmstrip } from "./filmstrip";
 import { ExportDialog } from "./export-dialog";
+import { CollageLeftRail } from "./collage/collage-left-rail";
+import { CollageRightRail } from "./collage/collage-right-rail";
+import { CollageCanvasStage } from "./collage/collage-canvas-stage";
 
 export function EditorShell() {
   const mobileSheet = useUiStore((s) => s.mobileSheet);
   const setMobileSheet = useUiStore((s) => s.setMobileSheet);
   const filmstripOpen = useUiStore((s) => s.filmstripOpen);
+  const mode = useUiStore((s) => s.mode);
   const addImport = useCatalogStore((s) => s.addImport);
 
   const [dragging, setDragging] = React.useState(false);
@@ -57,9 +61,19 @@ export function EditorShell() {
       <TopBar />
 
       <div className="relative flex min-h-0 flex-1">
-        <LeftRail />
-        <CanvasStage />
-        <RightRail />
+        {mode === "edit" ? (
+          <>
+            <LeftRail />
+            <CanvasStage />
+            <RightRail />
+          </>
+        ) : (
+          <>
+            <CollageLeftRail />
+            <CollageCanvasStage />
+            <CollageRightRail />
+          </>
+        )}
 
         {mobileSheet !== "none" && (
           <button

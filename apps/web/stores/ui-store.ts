@@ -3,8 +3,12 @@
 import { create } from "zustand";
 
 export type MobileSheet = "none" | "library" | "adjust";
+export type EditorMode = "edit" | "collage";
 
 interface UiState {
+  /** "edit" is the existing single-photo editor; "collage" swaps the rails
+   *  and canvas for the collage builder. TopBar/Filmstrip stay shared. */
+  mode: EditorMode;
   /** Desktop rail collapse. Mobile uses `mobileSheet` instead, so the two
    *  never fight and there is no hydration mismatch on first paint. */
   leftOpen: boolean;
@@ -30,9 +34,11 @@ interface UiState {
   setSelectedCaptionId: (id: string | null) => void;
   setCropMode: (active: boolean) => void;
   setCropRotation: (degrees: number) => void;
+  setMode: (mode: EditorMode) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
+  mode: "edit",
   leftOpen: true,
   rightOpen: true,
   mobileSheet: "none",
@@ -49,4 +55,5 @@ export const useUiStore = create<UiState>((set) => ({
   setSelectedCaptionId: (selectedCaptionId) => set({ selectedCaptionId }),
   setCropMode: (cropMode) => set({ cropMode }),
   setCropRotation: (cropRotation) => set({ cropRotation }),
+  setMode: (mode) => set({ mode }),
 }));

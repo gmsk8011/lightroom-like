@@ -105,3 +105,43 @@ export {
   type PresetGroup,
 } from "./presets/builtin";
 export { FUJIFILM_PRESETS } from "./presets/fujifilm";
+
+export {
+  collageSchema,
+  collageCellSchema,
+  type Collage,
+  type CollageCell,
+} from "./collage/schema";
+export {
+  DEFAULT_GAP_PCT,
+  DEFAULT_GAP_COLOR,
+  DEFAULT_COLLAGE_BORDER_WIDTH_PCT,
+  DEFAULT_COLLAGE_BORDER_COLOR,
+  DEFAULT_COLLAGE_RADIUS_PCT,
+  createDefaultCollage,
+  normalizeCollage,
+  resizeCells,
+  emptyCells,
+} from "./collage/defaults";
+export {
+  computeCollageLayout,
+  collageCanvasSize,
+  coverFit,
+  type CollageLayout,
+  type CollageCellRect,
+  type CoverFit,
+} from "./collage/layout";
+export {
+  renderCollage,
+  type CollageSource,
+  type CollageRenderInput,
+} from "./collage/render";
+export {
+  resolveCollageSources,
+  type CollageCellInput,
+  type ResolvedCollageSources,
+} from "./collage/resolve";
+export {
+  CollageExportRenderer,
+  type CollageCellSource,
+} from "./collage/export";

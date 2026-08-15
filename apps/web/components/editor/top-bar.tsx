@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import {
   Download,
   Eye,
@@ -9,18 +10,28 @@ import {
   Rows3,
   SlidersHorizontal,
 } from "lucide-react";
-import { Button, cn } from "@lrl/ui";
-import { useUiStore } from "@/stores/ui-store";
+import { Button, cn, Segmented } from "@lrl/ui";
+import { DEFAULT_EXPORT_OPTIONS, type ExportFormat } from "@lrl/engine";
+import { useUiStore, type EditorMode } from "@/stores/ui-store";
 import { useCatalogStore, usePhotoCount } from "@/stores/catalog-store";
 import { useExportStore } from "@/stores/export-store";
+import { useCollageHasAnyPhoto } from "@/stores/collage-store";
+import { exportCollage } from "@/lib/collage/export";
 import { ApplyToAllButton } from "./apply-to-all-button";
 import { ImportControl } from "./import-control";
+
+const MODE_OPTIONS: readonly { value: EditorMode; label: string }[] = [
+  { value: "edit", label: "Edit" },
+  { value: "collage", label: "Collage" },
+];
 
 export function TopBar() {
   const {
     leftOpen,
     rightOpen,
     filmstripOpen,
+    mode,
+    setMode,
     toggleLeft,
     toggleRight,
     toggleFilmstrip,
@@ -32,6 +43,8 @@ export function TopBar() {
   const count = usePhotoCount();
   const directoryName = useCatalogStore((s) => s.directoryName);
   const selectedCount = useCatalogStore((s) => s.selected.size);
+  const collageHasPhoto = useCollageHasAnyPhoto();
+  const [collageExporting, setCollageExporting] = React.useState(false);
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-panel px-2 sm:px-3">
@@ -81,6 +94,15 @@ export function TopBar() {
       )}
 
       {count > 0 && (
+        <Segmented
+          value={mode}
+          options={MODE_OPTIONS}
+          onChange={setMode}
+          columns={2}
+        />
+      )}
+
+      {count > 0 && (
         <Button
           size="sm"
           variant="ghost"
@@ -92,19 +114,21 @@ export function TopBar() {
         </Button>
       )}
 
-      {count > 0 && <ApplyToAllButton />}
+      {count > 0 && mode === "edit" && <ApplyToAllButton />}
 
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => setShowOriginal(!showOriginal)}
-        aria-label="Compare with original"
-        aria-pressed={showOriginal}
-        title="Compare with original (\)"
-        disabled={count === 0}
-      >
-        <Eye size={15} className={cn(showOriginal && "text-accent")} />
-      </Button>
+      {mode === "edit" && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setShowOriginal(!showOriginal)}
+          aria-label="Compare with original"
+          aria-pressed={showOriginal}
+          title="Compare with original (\)"
+          disabled={count === 0}
+        >
+          <Eye size={15} className={cn(showOriginal && "text-accent")} />
+        </Button>
+      )}
 
       <Button
         size="sm"
@@ -141,11 +165,24 @@ export function TopBar() {
         size="sm"
         variant="primary"
         className="gap-1.5"
-        disabled={count === 0}
-        onClick={() => useExportStore.getState().setOpen(true)}
+        disabled={mode === "collage" ? !collageHasPhoto || collageExporting : count === 0}
+        onClick={() => {
+          if (mode === "collage") {
+            setCollageExporting(true);
+            void exportCollage({
+              ...DEFAULT_EXPORT_OPTIONS,
+              format: "jpeg" as ExportFormat,
+              quality: 0.95,
+            }).finally(() => setCollageExporting(false));
+            return;
+          }
+          useExportStore.getState().setOpen(true);
+        }}
       >
         <Download size={14} />
-        <span className="hidden sm:inline">Export</span>
+        <span className="hidden sm:inline">
+          {mode === "collage" && collageExporting ? "Exporting…" : "Export"}
+        </span>
       </Button>
     </header>
   );

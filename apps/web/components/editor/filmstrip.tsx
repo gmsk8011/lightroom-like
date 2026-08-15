@@ -5,6 +5,8 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { AlertTriangle, FileQuestion, X } from "lucide-react";
 import { cn } from "@lrl/ui";
 import { useCatalogStore } from "@/stores/catalog-store";
+import { useCollageStore } from "@/stores/collage-store";
+import { useUiStore } from "@/stores/ui-store";
 import { useThumbnail } from "@/lib/thumbnails/use-thumbnail";
 
 const ITEM_WIDTH = 88;
@@ -36,9 +38,13 @@ function FilmstripItem({ id }: { id: string }) {
         type="button"
         title={photo.error ? `${photo.name} — ${photo.error}` : photo.name}
         aria-pressed={isSelected}
-        onClick={(e) =>
-          select(id, { toggle: e.metaKey || e.ctrlKey, range: e.shiftKey })
-        }
+        onClick={(e) => {
+          if (useUiStore.getState().mode === "collage") {
+            useCollageStore.getState().assignPhoto(id);
+            return;
+          }
+          select(id, { toggle: e.metaKey || e.ctrlKey, range: e.shiftKey });
+        }}
         className="grid h-full w-full place-items-center"
       >
         {photo.thumbUrl ? (
