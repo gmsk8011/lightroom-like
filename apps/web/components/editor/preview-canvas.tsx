@@ -5,6 +5,7 @@ import {
   captionBox,
   composite,
   computeFrameLayout,
+  createDefaultRecipe,
   DEFAULT_BORDER,
   DEFAULT_FILTERS,
   FilterRenderer,
@@ -211,7 +212,8 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
   React.useEffect(() => {
     if (!ready) return;
 
-    const current = useRecipeStore.getState().recipe;
+    const current =
+      useRecipeStore.getState().recipes[photo.id] ?? createDefaultRecipe();
     // Comparing to the original means no filters and no frame — the photo
     // exactly as it came off the disk.
     const shown: EditRecipe = showOriginal
@@ -220,8 +222,14 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
     schedule(shown);
 
     if (showOriginal) return;
-    return useRecipeStore.subscribe((state) => schedule(state.recipe));
-  }, [ready, showOriginal, schedule]);
+    // Whole-store subscribe (Zustand core has no selector-subscribe without
+    // the subscribeWithSelector middleware) — cheap to filter here since
+    // recipe edits aren't a hot path the way slider drags on filters are.
+    return useRecipeStore.subscribe((state) => {
+      const recipe = state.recipes[photo.id];
+      if (recipe) schedule(recipe);
+    });
+  }, [photo.id, ready, showOriginal, schedule]);
 
   React.useEffect(() => {
     return () => {
@@ -248,8 +256,8 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
   const hitTestCaption = React.useCallback(
     (point: { x: number; y: number }): boolean => {
       const info = lastDrawRef.current;
-      const caption = useRecipeStore.getState().recipe.caption;
-      if (!info?.metrics || !caption.enabled) return false;
+      const caption = useRecipeStore.getState().recipes[photo.id]?.caption;
+      if (!info?.metrics || !caption?.enabled) return false;
       const target = captionBox(
         info.layout.canvas.width,
         info.layout.canvas.height,
@@ -264,7 +272,7 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
         point.y <= target.y + target.height + DRAG_HIT_PADDING
       );
     },
-    [],
+    [photo.id],
   );
 
   const onPointerDown = React.useCallback(
@@ -290,13 +298,13 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
         const x = Math.min(100, Math.max(0, (point.x / info.layout.canvas.width) * 100));
         const y = Math.min(100, Math.max(0, (point.y / info.layout.canvas.height) * 100));
         const store = useRecipeStore.getState();
-        store.setCaption("positionX", x);
-        store.setCaption("positionY", y);
+        store.setCaption(photo.id, "positionX", x);
+        store.setCaption(photo.id, "positionY", y);
       } else {
         setHovering(hitTestCaption(point));
       }
     },
-    [canvasPoint, hitTestCaption],
+    [canvasPoint, hitTestCaption, photo.id],
   );
 
   const endDrag = React.useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {

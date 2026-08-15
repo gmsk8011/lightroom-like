@@ -26,6 +26,10 @@ export const ASPECT_RATIOS = [
   "2:3",
   "16:9",
   "9:16",
+  // Instagram's feed landscape ratio — the one common size not already
+  // covered by the generic ratios above (square, portrait, and story/reel
+  // are 1:1, 4:5, and 9:16, which already exist).
+  "1.91:1",
 ] as const;
 export type AspectRatio = (typeof ASPECT_RATIOS)[number];
 

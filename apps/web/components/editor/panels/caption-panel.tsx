@@ -11,7 +11,8 @@ import {
   Toggle,
   cn,
 } from "@lrl/ui";
-import { FONT_LABELS } from "@lrl/engine";
+import { DEFAULT_CAPTION, FONT_LABELS } from "@lrl/engine";
+import { useCatalogStore } from "@/stores/catalog-store";
 import { useRecipeStore } from "@/stores/recipe-store";
 
 const ALIGN_OPTIONS = [
@@ -78,11 +79,19 @@ function PositionGrid({
 }
 
 export function CaptionPanel() {
-  const caption = useRecipeStore((s) => s.recipe.caption);
+  const photoId = useCatalogStore((s) => s.activeId);
+  const caption = useRecipeStore((s) =>
+    photoId ? (s.recipes[photoId]?.caption ?? DEFAULT_CAPTION) : DEFAULT_CAPTION,
+  );
   const setCaption = useRecipeStore((s) => s.setCaption);
   const resetCaption = useRecipeStore((s) => s.resetCaption);
 
-  const off = !caption.enabled;
+  const noPhoto = !photoId;
+  const off = noPhoto || !caption.enabled;
+
+  function set<K extends keyof typeof caption>(key: K, value: (typeof caption)[K]) {
+    if (photoId) setCaption(photoId, key, value);
+  }
 
   return (
     <Panel
@@ -92,7 +101,7 @@ export function CaptionPanel() {
         <Button
           size="sm"
           variant="ghost"
-          onClick={resetCaption}
+          onClick={() => photoId && resetCaption(photoId)}
           aria-label="Reset caption"
           title="Reset caption"
         >
@@ -103,7 +112,7 @@ export function CaptionPanel() {
       <Toggle
         label="Show caption"
         checked={caption.enabled}
-        onChange={(v) => setCaption("enabled", v)}
+        onChange={(v) => set("enabled", v)}
       />
 
       <TextField
@@ -112,7 +121,7 @@ export function CaptionPanel() {
         rows={3}
         maxLength={500}
         placeholder="Type a caption…"
-        onChange={(v) => setCaption("text", v)}
+        onChange={(v) => set("text", v)}
       />
 
       <p className="-mt-1 mb-1.5 text-[10px] leading-relaxed text-faint">
@@ -125,8 +134,8 @@ export function CaptionPanel() {
         y={caption.positionY}
         disabled={off}
         onPick={(x, y) => {
-          setCaption("positionX", x);
-          setCaption("positionY", y);
+          set("positionX", x);
+          set("positionY", y);
         }}
       />
 
@@ -139,7 +148,7 @@ export function CaptionPanel() {
         precision={1}
         defaultValue={50}
         disabled={off}
-        onChange={(v) => setCaption("positionX", v)}
+        onChange={(v) => set("positionX", v)}
       />
       <Slider
         label="Y position"
@@ -150,14 +159,14 @@ export function CaptionPanel() {
         precision={1}
         defaultValue={88}
         disabled={off}
-        onChange={(v) => setCaption("positionY", v)}
+        onChange={(v) => set("positionY", v)}
       />
 
       <Segmented
         label="Alignment"
         value={caption.align}
         options={ALIGN_OPTIONS}
-        onChange={(v) => setCaption("align", v)}
+        onChange={(v) => set("align", v)}
         columns={3}
       />
 
@@ -165,7 +174,7 @@ export function CaptionPanel() {
         label="Typeface"
         value={caption.fontFamily}
         options={FONT_OPTIONS}
-        onChange={(v) => setCaption("fontFamily", v)}
+        onChange={(v) => set("fontFamily", v)}
         columns={4}
       />
 
@@ -173,7 +182,7 @@ export function CaptionPanel() {
         label="Text colour"
         value={caption.color}
         disabled={off}
-        onChange={(v) => setCaption("color", v)}
+        onChange={(v) => set("color", v)}
       />
 
       <Slider
@@ -185,7 +194,7 @@ export function CaptionPanel() {
         precision={1}
         defaultValue={2.4}
         disabled={off}
-        onChange={(v) => setCaption("sizePct", v)}
+        onChange={(v) => set("sizePct", v)}
       />
 
       <Slider
@@ -197,7 +206,7 @@ export function CaptionPanel() {
         precision={0}
         defaultValue={400}
         disabled={off}
-        onChange={(v) => setCaption("fontWeight", v)}
+        onChange={(v) => set("fontWeight", v)}
       />
 
       <Slider
@@ -209,13 +218,13 @@ export function CaptionPanel() {
         precision={2}
         defaultValue={0}
         disabled={off}
-        onChange={(v) => setCaption("letterSpacing", v)}
+        onChange={(v) => set("letterSpacing", v)}
       />
 
       <Toggle
         label="Uppercase"
         checked={caption.uppercase}
-        onChange={(v) => setCaption("uppercase", v)}
+        onChange={(v) => set("uppercase", v)}
       />
     </Panel>
   );

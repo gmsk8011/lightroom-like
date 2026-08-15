@@ -12,6 +12,7 @@ import { Button, cn } from "@lrl/ui";
 import { useUiStore } from "@/stores/ui-store";
 import { useCatalogStore, usePhotoCount } from "@/stores/catalog-store";
 import { useExportStore } from "@/stores/export-store";
+import { ApplyToAllButton } from "./apply-to-all-button";
 import { ImportControl } from "./import-control";
 
 export function TopBar() {
@@ -77,6 +78,8 @@ export function TopBar() {
           {selectedCount > 1 ? ` · ${selectedCount} selected` : ""}
         </span>
       )}
+
+      {count > 0 && <ApplyToAllButton />}
 
       <Button
         size="sm"

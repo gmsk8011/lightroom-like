@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import type { ImportResult, Photo } from "@/lib/catalog/types";
 import { thumbnails } from "@/lib/thumbnails/service";
+import { useRecipeStore } from "./recipe-store";
 
 export interface SelectOptions {
   /** Cmd/Ctrl-click: add or remove a single photo. */
@@ -51,6 +52,9 @@ export const useCatalogStore = create<CatalogState>((set, get) => ({
         order.push(photo.id);
       }
       const first = order[0] ?? null;
+      // Every photo gets a default recipe up front, so switching to any of
+      // them — before it's ever been touched — has something to read.
+      useRecipeStore.getState().ensure(order);
       return {
         order,
         byId,
@@ -100,6 +104,7 @@ export const useCatalogStore = create<CatalogState>((set, get) => ({
 
   clear: () => {
     thumbnails.reset();
+    useRecipeStore.getState().clear();
     set({
       order: [],
       byId: {},

@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { DEFAULT_EXPORT_OPTIONS, type ExportOptions } from "@lrl/engine";
+import { createDefaultRecipe, DEFAULT_EXPORT_OPTIONS, type ExportOptions } from "@lrl/engine";
 import { ExportRun, type ExportProgress } from "@/lib/export/runner";
 import { useCatalogStore } from "./catalog-store";
 import { useRecipeStore } from "./recipe-store";
@@ -58,10 +58,12 @@ export const useExportStore = create<ExportState>((set, get) => ({
 
     if (photos.length === 0) return;
 
-    const recipe = useRecipeStore.getState().recipe;
+    // Each photo carries its own recipe now, so a batch export can mix a
+    // photo that's been individually tweaked in with ones that share the
+    // "apply to all" baseline.
     const run = new ExportRun(
       photos,
-      () => recipe,
+      (photo) => useRecipeStore.getState().recipes[photo.id] ?? createDefaultRecipe(),
       options,
       catalog.directoryHandle,
       (progress) => set({ progress }),

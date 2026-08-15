@@ -1,7 +1,13 @@
 "use client";
 
-import { BUILTIN_PRESETS, type FilterPreset, type PresetGroup } from "@lrl/engine";
+import {
+  BUILTIN_PRESETS,
+  DEFAULT_FILTERS,
+  type FilterPreset,
+  type PresetGroup,
+} from "@lrl/engine";
 import { cn } from "@lrl/ui";
+import { useCatalogStore } from "@/stores/catalog-store";
 import { useRecipeStore } from "@/stores/recipe-store";
 
 const GROUP_LABELS: Record<PresetGroup, string> = {
@@ -25,7 +31,10 @@ function groupPresets(): Map<PresetGroup, FilterPreset[]> {
 const GROUPED = groupPresets();
 
 export function PresetsList() {
-  const activePreset = useRecipeStore((s) => s.recipe.filters.preset);
+  const photoId = useCatalogStore((s) => s.activeId);
+  const activePreset = useRecipeStore((s) =>
+    photoId ? (s.recipes[photoId]?.filters.preset ?? null) : DEFAULT_FILTERS.preset,
+  );
   const applyFilterPreset = useRecipeStore((s) => s.applyFilterPreset);
   const resetFilters = useRecipeStore((s) => s.resetFilters);
 
@@ -33,7 +42,8 @@ export function PresetsList() {
     <div className="flex flex-col gap-2.5">
       <button
         type="button"
-        onClick={resetFilters}
+        disabled={!photoId}
+        onClick={() => photoId && resetFilters(photoId)}
         className={cn(
           "rounded px-2 py-1.5 text-left text-xs transition-colors",
           activePreset === null
@@ -58,7 +68,8 @@ export function PresetsList() {
                 <button
                   key={preset.id}
                   type="button"
-                  onClick={() => applyFilterPreset(preset)}
+                  disabled={!photoId}
+                  onClick={() => photoId && applyFilterPreset(photoId, preset)}
                   className={cn(
                     "rounded px-2 py-1.5 text-left text-xs transition-colors",
                     activePreset === preset.id

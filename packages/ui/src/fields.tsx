@@ -135,27 +135,36 @@ export interface ToggleProps {
 
 export function Toggle({ label, checked, onChange }: ToggleProps) {
   return (
+    // A real checkbox drives the visual state via CSS (:checked / peer-checked)
+    // instead of a JS-computed className, so the switch's appearance can never
+    // drift out of sync with a React render — the browser paints it directly.
+    // Wrapping the label makes the whole row clickable, not just the pill.
     <label className="flex cursor-pointer items-center justify-between gap-2 py-1.5">
       <FieldLabel>{label}</FieldLabel>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        onClick={() => onChange(!checked)}
-        className={cn(
-          "relative h-4 w-7 shrink-0 rounded-full transition-colors",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-          checked ? "bg-accent" : "bg-track",
-        )}
-      >
+      <span className="relative inline-flex h-4 w-7 shrink-0 items-center">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          aria-label={label}
+          className="peer absolute inset-0 m-0 size-full cursor-pointer appearance-none opacity-0"
+        />
         <span
+          aria-hidden="true"
           className={cn(
-            "absolute top-0.5 size-3 rounded-full bg-white transition-transform",
-            checked ? "translate-x-3.5" : "translate-x-0.5",
+            "pointer-events-none absolute inset-0 rounded-full transition-colors",
+            "bg-track peer-checked:bg-accent",
+            "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent",
           )}
         />
-      </button>
+        <span
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute top-0.5 left-0.5 size-3 rounded-full bg-white transition-transform",
+            "peer-checked:translate-x-3.5",
+          )}
+        />
+      </span>
     </label>
   );
 }

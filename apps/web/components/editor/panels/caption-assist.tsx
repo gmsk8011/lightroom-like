@@ -3,11 +3,13 @@
 import * as React from "react";
 import { Check, Loader2, Sparkles, SpellCheck, X } from "lucide-react";
 import { Button, cn } from "@lrl/ui";
+import { DEFAULT_CAPTION } from "@lrl/engine";
 import {
   applyChange,
   useCaptionAssist,
   type AssistChange,
 } from "@/lib/caption/use-caption-assist";
+import { useCatalogStore } from "@/stores/catalog-store";
 import { useRecipeStore } from "@/stores/recipe-store";
 
 const TYPE_LABELS: Record<AssistChange["type"], string> = {
@@ -19,7 +21,10 @@ const TYPE_LABELS: Record<AssistChange["type"], string> = {
 };
 
 export function CaptionAssist() {
-  const text = useRecipeStore((s) => s.recipe.caption.text);
+  const photoId = useCatalogStore((s) => s.activeId);
+  const text = useRecipeStore((s) =>
+    photoId ? (s.recipes[photoId]?.caption.text ?? DEFAULT_CAPTION.text) : DEFAULT_CAPTION.text,
+  );
   const setCaption = useRecipeStore((s) => s.setCaption);
   const { status, changes, corrected, error, run, reset, dismissChange } =
     useCaptionAssist();
@@ -42,19 +47,19 @@ export function CaptionAssist() {
   }
 
   function accept(change: AssistChange, index: number) {
-    const next = applyChange(
-      useRecipeStore.getState().recipe.caption.text,
-      change,
-    );
+    if (!photoId) return;
+    const current =
+      useRecipeStore.getState().recipes[photoId]?.caption.text ?? DEFAULT_CAPTION.text;
+    const next = applyChange(current, change);
     checkedText.current = next;
-    setCaption("text", next);
+    setCaption(photoId, "text", next);
     dismissChange(index);
   }
 
   function acceptAll() {
-    if (!corrected) return;
+    if (!corrected || !photoId) return;
     checkedText.current = corrected;
-    setCaption("text", corrected);
+    setCaption(photoId, "text", corrected);
     reset();
   }
 

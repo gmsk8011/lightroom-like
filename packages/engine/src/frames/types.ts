@@ -70,6 +70,7 @@ const ASPECT_VALUES: Record<Exclude<AspectRatio, "original">, number> = {
   "2:3": 2 / 3,
   "16:9": 16 / 9,
   "9:16": 9 / 16,
+  "1.91:1": 1.91,
 };
 
 export function aspectValue(aspect: AspectRatio): number | null {

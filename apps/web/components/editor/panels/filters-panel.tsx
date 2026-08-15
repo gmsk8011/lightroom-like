@@ -2,7 +2,8 @@
 
 import { RotateCcw } from "lucide-react";
 import { Button, Panel, Slider } from "@lrl/ui";
-import type { Filters } from "@lrl/engine";
+import { DEFAULT_FILTERS, type Filters } from "@lrl/engine";
+import { useCatalogStore } from "@/stores/catalog-store";
 import { useRecipeStore } from "@/stores/recipe-store";
 
 interface Control {
@@ -37,7 +38,10 @@ const EFFECTS: Control[] = [
 ];
 
 function ControlGroup({ controls }: { controls: Control[] }) {
-  const filters = useRecipeStore((s) => s.recipe.filters);
+  const photoId = useCatalogStore((s) => s.activeId);
+  const filters = useRecipeStore((s) =>
+    photoId ? (s.recipes[photoId]?.filters ?? DEFAULT_FILTERS) : DEFAULT_FILTERS,
+  );
   const setFilter = useRecipeStore((s) => s.setFilter);
 
   return (
@@ -51,8 +55,9 @@ function ControlGroup({ controls }: { controls: Control[] }) {
           step={c.step}
           precision={c.precision}
           defaultValue={0}
+          disabled={!photoId}
           value={filters[c.key] as number}
-          onChange={(v) => setFilter(c.key, v as never)}
+          onChange={(v) => photoId && setFilter(photoId, c.key, v as never)}
         />
       ))}
     </>
@@ -60,6 +65,7 @@ function ControlGroup({ controls }: { controls: Control[] }) {
 }
 
 export function FiltersPanel() {
+  const photoId = useCatalogStore((s) => s.activeId);
   const resetFilters = useRecipeStore((s) => s.resetFilters);
 
   return (
@@ -70,7 +76,7 @@ export function FiltersPanel() {
           <Button
             size="sm"
             variant="ghost"
-            onClick={resetFilters}
+            onClick={() => photoId && resetFilters(photoId)}
             aria-label="Reset all filters"
             title="Reset all filters"
           >
