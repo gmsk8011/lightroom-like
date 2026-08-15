@@ -249,10 +249,14 @@ export function PreviewCanvas({ photo }: PreviewCanvasProps) {
     (point: { x: number; y: number }): boolean => {
       const info = lastDrawRef.current;
       const caption = useRecipeStore.getState().recipe.caption;
-      if (!info?.metrics || caption.anchor !== "free" || !caption.enabled) {
-        return false;
-      }
-      const target = captionBox(info.layout, caption, info.metrics, info.scale);
+      if (!info?.metrics || !caption.enabled) return false;
+      const target = captionBox(
+        info.layout.canvas.width,
+        info.layout.canvas.height,
+        caption,
+        info.metrics,
+        info.scale,
+      );
       return (
         point.x >= target.x - DRAG_HIT_PADDING &&
         point.x <= target.x + target.width + DRAG_HIT_PADDING &&

@@ -2,12 +2,7 @@ import { measureCaption } from "../caption/layout";
 import { drawCaption } from "../caption/render";
 import { registerBuiltinFrames } from "../frames/builtin";
 import { roundedRectPath } from "../frames/draw";
-import {
-  computeFrameLayout,
-  getFrame,
-  resolvePadding,
-  scaleLayout,
-} from "../frames/registry";
+import { computeFrameLayout, getFrame, scaleLayout } from "../frames/registry";
 import { borderUnit, type FrameCanvasContext, type FrameLayout } from "../frames/types";
 import type { EditRecipe } from "../recipe/schema";
 
@@ -35,29 +30,12 @@ export function composite(input: CompositeInput): FrameLayout {
 
   registerBuiltinFrames();
 
+  // The caption never affects frame layout — it's a pure overlay painted on
+  // top of the finished canvas, so resizing or moving it never changes the
+  // canvas size or shrinks the photo.
   const metrics = measureCaption(ctx, recipe.caption, sourceWidth, sourceHeight);
 
-  // A caption anchored in the border may need more room than the frame gives
-  // it. Padding is resolved first so the shortfall — and only the shortfall —
-  // is added, which keeps a polaroid's chin from growing for no reason.
-  let extraTop = 0;
-  let extraBottom = 0;
-  if (metrics) {
-    const base = resolvePadding(border, sourceWidth, sourceHeight);
-    if (recipe.caption.anchor === "border-bottom") {
-      extraBottom = Math.max(0, metrics.blockHeight - base.bottom);
-    } else if (recipe.caption.anchor === "border-top") {
-      extraTop = Math.max(0, metrics.blockHeight - base.top);
-    }
-  }
-
-  const full = computeFrameLayout(
-    border,
-    sourceWidth,
-    sourceHeight,
-    extraBottom,
-    extraTop,
-  );
+  const full = computeFrameLayout(border, sourceWidth, sourceHeight);
   const layout = scale === 1 ? full : scaleLayout(full, scale);
 
   const canvas = ctx.canvas;
@@ -114,14 +92,7 @@ export function composite(input: CompositeInput): FrameLayout {
   frame?.drawOver?.(ctx, layout, border);
 
   if (metrics) {
-    drawCaption(
-      ctx,
-      layout,
-      recipe.caption,
-      metrics,
-      scale,
-      Math.min(sourceWidth, sourceHeight),
-    );
+    drawCaption(ctx, layout.canvas.width, layout.canvas.height, recipe.caption, metrics, scale);
   }
 
   return layout;

@@ -9,8 +9,9 @@ import {
   Slider,
   TextField,
   Toggle,
+  cn,
 } from "@lrl/ui";
-import { FONT_LABELS, type CaptionAnchor } from "@lrl/engine";
+import { FONT_LABELS } from "@lrl/engine";
 import { useRecipeStore } from "@/stores/recipe-store";
 
 const ALIGN_OPTIONS = [
@@ -19,15 +20,62 @@ const ALIGN_OPTIONS = [
   { value: "right", label: "Right" },
 ] as const;
 
-const ANCHOR_OPTIONS: readonly { value: CaptionAnchor; label: string }[] = [
-  { value: "border-bottom", label: "Below" },
-  { value: "border-top", label: "Above" },
-  { value: "image-bottom", label: "On btm" },
-  { value: "image-top", label: "On top" },
-  { value: "free", label: "Anywhere" },
+const FONT_OPTIONS = FONT_LABELS.map(([value, label]) => ({ value, label }));
+
+/** Nine quick-pick spots, laid out to match their visual position. */
+const POSITION_PRESETS: { x: number; y: number }[] = [
+  { x: 10, y: 10 },
+  { x: 50, y: 10 },
+  { x: 90, y: 10 },
+  { x: 10, y: 50 },
+  { x: 50, y: 50 },
+  { x: 90, y: 50 },
+  { x: 10, y: 90 },
+  { x: 50, y: 90 },
+  { x: 90, y: 90 },
 ];
 
-const FONT_OPTIONS = FONT_LABELS.map(([value, label]) => ({ value, label }));
+function PositionGrid({
+  x,
+  y,
+  disabled,
+  onPick,
+}: {
+  x: number;
+  y: number;
+  disabled: boolean;
+  onPick: (x: number, y: number) => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "grid grid-cols-3 gap-1 rounded border border-line bg-raised p-1.5",
+        disabled && "opacity-50",
+      )}
+    >
+      {POSITION_PRESETS.map((p) => {
+        const active = Math.abs(p.x - x) < 1 && Math.abs(p.y - y) < 1;
+        return (
+          <button
+            key={`${p.x}-${p.y}`}
+            type="button"
+            disabled={disabled}
+            aria-label={`Move caption to x ${p.x}%, y ${p.y}%`}
+            onClick={() => onPick(p.x, p.y)}
+            className="grid aspect-square place-items-center rounded transition-colors hover:bg-raised-hover"
+          >
+            <span
+              className={cn(
+                "size-1.5 rounded-full transition-colors",
+                active ? "bg-accent" : "bg-faint",
+              )}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function CaptionPanel() {
   const caption = useRecipeStore((s) => s.recipe.caption);
@@ -35,7 +83,6 @@ export function CaptionPanel() {
   const resetCaption = useRecipeStore((s) => s.resetCaption);
 
   const off = !caption.enabled;
-  const free = caption.anchor === "free";
 
   return (
     <Panel
@@ -68,43 +115,43 @@ export function CaptionPanel() {
         onChange={(v) => setCaption("text", v)}
       />
 
-      <Segmented
-        label="Position"
-        value={caption.anchor}
-        options={ANCHOR_OPTIONS}
-        onChange={(v) => setCaption("anchor", v)}
-        columns={3}
+      <p className="-mt-1 mb-1.5 text-[10px] leading-relaxed text-faint">
+        Drag the caption anywhere on the photo, or use a quick spot below. It
+        always overlays the photo — it never resizes it.
+      </p>
+
+      <PositionGrid
+        x={caption.positionX}
+        y={caption.positionY}
+        disabled={off}
+        onPick={(x, y) => {
+          setCaption("positionX", x);
+          setCaption("positionY", y);
+        }}
       />
 
-      {free && (
-        <>
-          <p className="-mt-1 mb-1 text-[10px] leading-relaxed text-faint">
-            Drag the caption on the photo, or set its position here.
-          </p>
-          <Slider
-            label="X position"
-            value={caption.positionX}
-            min={0}
-            max={100}
-            step={0.5}
-            precision={1}
-            defaultValue={50}
-            disabled={off}
-            onChange={(v) => setCaption("positionX", v)}
-          />
-          <Slider
-            label="Y position"
-            value={caption.positionY}
-            min={0}
-            max={100}
-            step={0.5}
-            precision={1}
-            defaultValue={88}
-            disabled={off}
-            onChange={(v) => setCaption("positionY", v)}
-          />
-        </>
-      )}
+      <Slider
+        label="X position"
+        value={caption.positionX}
+        min={0}
+        max={100}
+        step={0.5}
+        precision={1}
+        defaultValue={50}
+        disabled={off}
+        onChange={(v) => setCaption("positionX", v)}
+      />
+      <Slider
+        label="Y position"
+        value={caption.positionY}
+        min={0}
+        max={100}
+        step={0.5}
+        precision={1}
+        defaultValue={88}
+        disabled={off}
+        onChange={(v) => setCaption("positionY", v)}
+      />
 
       <Segmented
         label="Alignment"
@@ -152,20 +199,6 @@ export function CaptionPanel() {
         disabled={off}
         onChange={(v) => setCaption("fontWeight", v)}
       />
-
-      {!free && (
-        <Slider
-          label="Offset"
-          value={caption.offsetPct}
-          min={-20}
-          max={20}
-          step={0.1}
-          precision={1}
-          defaultValue={0}
-          disabled={off}
-          onChange={(v) => setCaption("offsetPct", v)}
-        />
-      )}
 
       <Slider
         label="Letter spacing"

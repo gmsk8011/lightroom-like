@@ -29,15 +29,6 @@ export const ASPECT_RATIOS = [
 ] as const;
 export type AspectRatio = (typeof ASPECT_RATIOS)[number];
 
-export const CAPTION_ANCHORS = [
-  "border-bottom",
-  "border-top",
-  "image-bottom",
-  "image-top",
-  "free",
-] as const;
-export type CaptionAnchor = (typeof CAPTION_ANCHORS)[number];
-
 const hexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "expected a #rrggbb colour");
@@ -86,10 +77,9 @@ export const captionSchema = z.object({
   color: hexColor,
   opacity: z.number().min(0).max(1),
   align: z.enum(["left", "center", "right"]),
-  anchor: z.enum(CAPTION_ANCHORS),
-  offsetPct: z.number().min(-20).max(20),
   /** Centre point of the caption block, as a percent of the full canvas.
-   *  Only used when anchor is "free" — drag-anywhere positioning. */
+   *  This is the only positioning mechanism — the caption is always a free
+   *  overlay, draggable on the preview, and never influences frame layout. */
   positionX: z.number().min(0).max(100),
   positionY: z.number().min(0).max(100),
   letterSpacing: z.number().min(-0.1).max(1),

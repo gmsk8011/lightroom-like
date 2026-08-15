@@ -12,7 +12,7 @@ export function LeftRail() {
     <aside
       className={cn(
         // Small screens: an overlay drawer.
-        "fixed inset-y-0 left-0 z-40 w-64 shrink-0 overflow-y-auto",
+        "fixed inset-y-0 left-0 z-40 w-64 shrink-0 overflow-x-hidden overflow-y-auto",
         "border-r border-line bg-panel transition-transform duration-200",
         mobileSheet === "library" ? "translate-x-0" : "-translate-x-full",
         // Large screens: an in-flow column that collapses to zero width.

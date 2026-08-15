@@ -13,7 +13,7 @@ export function RightRail() {
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 right-0 z-40 w-72 shrink-0 overflow-y-auto",
+        "fixed inset-y-0 right-0 z-40 w-72 shrink-0 overflow-x-hidden overflow-y-auto",
         "border-l border-line bg-panel transition-transform duration-200",
         mobileSheet === "adjust" ? "translate-x-0" : "translate-x-full",
         "lg:relative lg:z-auto lg:translate-x-0",

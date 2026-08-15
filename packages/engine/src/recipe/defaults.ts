@@ -38,8 +38,6 @@ export const DEFAULT_CAPTION: Caption = {
   color: "#1a1a1a",
   opacity: 1,
   align: "center",
-  anchor: "border-bottom",
-  offsetPct: 0,
   positionX: 50,
   positionY: 88,
   letterSpacing: 0,

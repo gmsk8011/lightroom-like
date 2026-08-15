@@ -58,7 +58,10 @@ export function ColorField({
             disabled={disabled}
             onChange={(e) => onChange(e.target.value)}
             aria-label={label}
-            className="absolute inset-0 cursor-pointer opacity-0"
+            // A native colour input keeps its own intrinsic size (Chromium:
+            // ~50x27px) unless its default appearance is switched off first —
+            // inset-0 alone is silently ignored and the swatch overflows.
+            className="absolute inset-0 size-full min-w-0 cursor-pointer appearance-none border-0 p-0 opacity-0"
           />
         </div>
       </div>
