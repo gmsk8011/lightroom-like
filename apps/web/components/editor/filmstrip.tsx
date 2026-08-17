@@ -8,6 +8,7 @@ import { useCatalogStore } from "@/stores/catalog-store";
 import { useCollageStore } from "@/stores/collage-store";
 import { useUiStore } from "@/stores/ui-store";
 import { useThumbnail } from "@/lib/thumbnails/use-thumbnail";
+import { PHOTO_DRAG_TYPE } from "@/lib/collage/drag";
 
 const ITEM_WIDTH = 88;
 const GAP = 6;
@@ -38,8 +39,13 @@ function FilmstripItem({ id }: { id: string }) {
         type="button"
         title={photo.error ? `${photo.name} — ${photo.error}` : photo.name}
         aria-pressed={isSelected}
+        draggable={photo.status !== "unsupported"}
+        onDragStart={(e) => {
+          e.dataTransfer.setData(PHOTO_DRAG_TYPE, id);
+          e.dataTransfer.effectAllowed = "copy";
+        }}
         onClick={(e) => {
-          if (useUiStore.getState().mode === "collage") {
+          if (useUiStore.getState().collageOpen) {
             useCollageStore.getState().assignPhoto(id);
             return;
           }

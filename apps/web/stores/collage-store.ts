@@ -4,8 +4,10 @@ import { create } from "zustand";
 import {
   createDefaultCollage,
   resizeCells,
+  EMPTY_CELL,
   type AspectRatio,
   type Collage,
+  type CollageCell,
 } from "@lrl/engine";
 
 /**
@@ -33,17 +35,37 @@ interface CollageState {
   clearSelection: () => void;
 
   /** Assigns to the single selected cell — a no-op unless exactly one cell
-   *  is selected. */
+   *  is selected. Resets that cell's pan/zoom, since a leftover crop
+   *  position from whatever photo was there before isn't meaningful. */
   assignPhoto: (photoId: string) => void;
-  /** Swaps the two selected cells' photos — a no-op unless exactly two are
-   *  selected. */
+  /** Assigns directly by index, independent of selection — the drag-and-
+   *  drop assignment path (dropping a filmstrip photo onto a cell). */
+  setCellPhoto: (index: number, photoId: string) => void;
+  /** Swaps the two selected cells' photos (including pan/zoom) — a no-op
+   *  unless exactly two are selected. */
   swapSelected: () => void;
+  /** Swaps two cells directly by index — the drag-a-cell-onto-another-cell
+   *  path. */
+  swapCells: (a: number, b: number) => void;
+  /** Merges a pan/zoom patch into one cell, leaving its photo untouched. */
+  setCellTransform: (
+    index: number,
+    patch: Partial<Pick<CollageCell, "offsetX" | "offsetY" | "zoom">>,
+  ) => void;
   clearCell: (index: number) => void;
   clearAll: () => void;
   reset: () => void;
 }
 
-export const useCollageStore = create<CollageState>((set) => ({
+function withCell(
+  cells: CollageCell[],
+  index: number,
+  update: (cell: CollageCell) => CollageCell,
+): CollageCell[] {
+  return cells.map((c, i) => (i === index ? update(c) : c));
+}
+
+export const useCollageStore = create<CollageState>((set, get) => ({
   collage: createDefaultCollage(),
   selectedCells: [],
 
@@ -79,18 +101,33 @@ export const useCollageStore = create<CollageState>((set) => ({
 
   clearSelection: () => set({ selectedCells: [] }),
 
-  assignPhoto: (photoId) =>
-    set((s) => {
-      if (s.selectedCells.length !== 1) return s;
-      const [index] = s.selectedCells;
-      const cells = s.collage.cells.map((c, i) => (i === index ? { photoId } : c));
-      return { collage: { ...s.collage, cells } };
-    }),
+  assignPhoto: (photoId) => {
+    const [index] = get().selectedCells;
+    if (get().selectedCells.length === 1 && index !== undefined) {
+      get().setCellPhoto(index, photoId);
+    }
+  },
 
-  swapSelected: () =>
+  setCellPhoto: (index, photoId) =>
+    set((s) => ({
+      collage: {
+        ...s.collage,
+        cells: withCell(s.collage.cells, index, () => ({
+          ...EMPTY_CELL,
+          photoId,
+        })),
+      },
+    })),
+
+  swapSelected: () => {
+    const [a, b] = get().selectedCells;
+    if (get().selectedCells.length === 2 && a !== undefined && b !== undefined) {
+      get().swapCells(a, b);
+    }
+  },
+
+  swapCells: (a, b) =>
     set((s) => {
-      if (s.selectedCells.length !== 2) return s;
-      const [a, b] = s.selectedCells as [number, number];
       const cells = [...s.collage.cells];
       const tmp = cells[a]!;
       cells[a] = cells[b]!;
@@ -98,13 +135,21 @@ export const useCollageStore = create<CollageState>((set) => ({
       return { collage: { ...s.collage, cells } };
     }),
 
+  setCellTransform: (index, patch) =>
+    set((s) => ({
+      collage: {
+        ...s.collage,
+        cells: withCell(s.collage.cells, index, (c) => ({ ...c, ...patch })),
+      },
+    })),
+
   clearCell: (index) =>
-    set((s) => {
-      const cells = s.collage.cells.map((c, i) =>
-        i === index ? { photoId: null } : c,
-      );
-      return { collage: { ...s.collage, cells } };
-    }),
+    set((s) => ({
+      collage: {
+        ...s.collage,
+        cells: withCell(s.collage.cells, index, () => ({ ...EMPTY_CELL })),
+      },
+    })),
 
   clearAll: () =>
     set((s) => ({

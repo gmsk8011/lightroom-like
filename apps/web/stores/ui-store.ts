@@ -3,12 +3,8 @@
 import { create } from "zustand";
 
 export type MobileSheet = "none" | "library" | "adjust";
-export type EditorMode = "edit" | "collage";
 
 interface UiState {
-  /** "edit" is the existing single-photo editor; "collage" swaps the rails
-   *  and canvas for the collage builder. TopBar/Filmstrip stay shared. */
-  mode: EditorMode;
   /** Desktop rail collapse. Mobile uses `mobileSheet` instead, so the two
    *  never fight and there is no hydration mismatch on first paint. */
   leftOpen: boolean;
@@ -26,6 +22,11 @@ interface UiState {
    *  than as local state in the canvas so the Crop side panel can host the
    *  slider instead of the floating canvas toolbar. */
   cropRotation: number;
+  /** Whether the Collage panel is expanded. There's no separate "mode" —
+   *  the collage builder is just another right-rail panel, and the main
+   *  canvas shows the collage instead of the active photo for as long as
+   *  this stays open, switching back the moment it's collapsed. */
+  collageOpen: boolean;
   toggleLeft: () => void;
   toggleRight: () => void;
   toggleFilmstrip: () => void;
@@ -34,11 +35,10 @@ interface UiState {
   setSelectedCaptionId: (id: string | null) => void;
   setCropMode: (active: boolean) => void;
   setCropRotation: (degrees: number) => void;
-  setMode: (mode: EditorMode) => void;
+  setCollageOpen: (open: boolean) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
-  mode: "edit",
   leftOpen: true,
   rightOpen: true,
   mobileSheet: "none",
@@ -47,6 +47,7 @@ export const useUiStore = create<UiState>((set) => ({
   selectedCaptionId: null,
   cropMode: false,
   cropRotation: 0,
+  collageOpen: false,
   toggleLeft: () => set((s) => ({ leftOpen: !s.leftOpen })),
   toggleRight: () => set((s) => ({ rightOpen: !s.rightOpen })),
   toggleFilmstrip: () => set((s) => ({ filmstripOpen: !s.filmstripOpen })),
@@ -55,5 +56,5 @@ export const useUiStore = create<UiState>((set) => ({
   setSelectedCaptionId: (selectedCaptionId) => set({ selectedCaptionId }),
   setCropMode: (cropMode) => set({ cropMode }),
   setCropRotation: (cropRotation) => set({ cropRotation }),
-  setMode: (mode) => set({ mode }),
+  setCollageOpen: (collageOpen) => set({ collageOpen }),
 }));

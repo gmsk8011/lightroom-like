@@ -112,3 +112,40 @@ export function coverFit(
   const sHeight = sWidth / targetAspect;
   return { sx: 0, sy: (sourceHeight - sHeight) / 2, sWidth, sHeight };
 }
+
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+/**
+ * coverFit() plus pan (offsetX/offsetY, -50..50, 0 = centred) and zoom
+ * (>=1, crops in tighter). Room to pan exists on whichever axis coverFit()
+ * itself already crops — a panorama in a square cell has horizontal slack
+ * even at zoom 1, since only part of its width was ever going to show.
+ * Zooming in shrinks the crop window on both axes, which can open up slack
+ * on an axis that had none at zoom 1.
+ *
+ * offsetX/offsetY are stored as a percent of the *available* slack rather
+ * than an absolute pixel shift, so they stay meaningful — and don't need
+ * re-clamping — as zoom changes the amount of slack there is to use.
+ */
+export function coverFitTransform(
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+  offsetXPct: number,
+  offsetYPct: number,
+  zoom: number,
+): CoverFit {
+  const base = coverFit(sourceWidth, sourceHeight, targetWidth, targetHeight);
+  const sWidth = base.sWidth / zoom;
+  const sHeight = base.sHeight / zoom;
+  const slackX = Math.max(0, sourceWidth - sWidth);
+  const slackY = Math.max(0, sourceHeight - sHeight);
+
+  const sx = clamp(((offsetXPct + 50) / 100) * slackX, 0, slackX);
+  const sy = clamp(((offsetYPct + 50) / 100) * slackY, 0, slackY);
+
+  return { sx, sy, sWidth, sHeight };
+}

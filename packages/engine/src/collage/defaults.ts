@@ -6,8 +6,15 @@ export const DEFAULT_COLLAGE_BORDER_WIDTH_PCT = 0;
 export const DEFAULT_COLLAGE_BORDER_COLOR = "#ffffff";
 export const DEFAULT_COLLAGE_RADIUS_PCT = 0;
 
+export const EMPTY_CELL: CollageCell = {
+  photoId: null,
+  offsetX: 0,
+  offsetY: 0,
+  zoom: 1,
+};
+
 export function emptyCells(rows: number, cols: number): CollageCell[] {
-  return Array.from({ length: rows * cols }, () => ({ photoId: null }));
+  return Array.from({ length: rows * cols }, () => ({ ...EMPTY_CELL }));
 }
 
 export function createDefaultCollage(): Collage {
@@ -22,6 +29,16 @@ export function createDefaultCollage(): Collage {
     borderColor: DEFAULT_COLLAGE_BORDER_COLOR,
     radiusPct: DEFAULT_COLLAGE_RADIUS_PCT,
     cells: emptyCells(1, 2),
+  };
+}
+
+function normalizeCell(cell: Partial<CollageCell> | null | undefined): CollageCell {
+  if (!cell) return { ...EMPTY_CELL };
+  return {
+    photoId: cell.photoId ?? null,
+    offsetX: cell.offsetX ?? EMPTY_CELL.offsetX,
+    offsetY: cell.offsetY ?? EMPTY_CELL.offsetY,
+    zoom: cell.zoom ?? EMPTY_CELL.zoom,
   };
 }
 
@@ -50,6 +67,7 @@ export function normalizeCollage(
   if (!input) return createDefaultCollage();
   const rows = input.rows ?? 1;
   const cols = input.cols ?? 2;
+  const cells = resizeCells((input.cells ?? []).map(normalizeCell), rows, cols);
   return {
     version: 1,
     rows,
@@ -60,6 +78,6 @@ export function normalizeCollage(
     borderWidthPct: input.borderWidthPct ?? DEFAULT_COLLAGE_BORDER_WIDTH_PCT,
     borderColor: input.borderColor ?? DEFAULT_COLLAGE_BORDER_COLOR,
     radiusPct: input.radiusPct ?? DEFAULT_COLLAGE_RADIUS_PCT,
-    cells: resizeCells(input.cells ?? [], rows, cols),
+    cells,
   };
 }

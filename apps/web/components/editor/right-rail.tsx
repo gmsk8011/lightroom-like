@@ -6,6 +6,7 @@ import { FiltersPanel } from "./panels/filters-panel";
 import { CropPanel } from "./panels/crop-panel";
 import { BorderPanel } from "./panels/border-panel";
 import { CaptionPanel } from "./panels/caption-panel";
+import { CollagePanel } from "./panels/collage-panel";
 
 export function RightRail() {
   const rightOpen = useUiStore((s) => s.rightOpen);
@@ -27,6 +28,7 @@ export function RightRail() {
         <CropPanel />
         <BorderPanel />
         <CaptionPanel />
+        <CollagePanel />
       </div>
     </aside>
   );

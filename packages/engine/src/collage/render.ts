@@ -1,6 +1,6 @@
 import type { FrameCanvasContext } from "../frames/types";
 import { roundedRectPath } from "../frames/draw";
-import { computeCollageLayout, coverFit, type CollageLayout } from "./layout";
+import { computeCollageLayout, coverFitTransform, type CollageLayout } from "./layout";
 import type { Collage } from "./schema";
 
 export interface CollageSource {
@@ -42,6 +42,7 @@ export function renderCollage(input: CollageRenderInput): CollageLayout {
   for (const cell of layout.cells) {
     const index = cell.row * collage.cols + cell.col;
     const source = sources[index] ?? null;
+    const cellData = collage.cells[index];
 
     ctx.save();
     if (layout.cellRadius > 0) {
@@ -49,8 +50,16 @@ export function renderCollage(input: CollageRenderInput): CollageLayout {
       ctx.clip();
     }
 
-    if (source && cell.width > 0 && cell.height > 0) {
-      const fit = coverFit(source.width, source.height, cell.width, cell.height);
+    if (source && cellData && cell.width > 0 && cell.height > 0) {
+      const fit = coverFitTransform(
+        source.width,
+        source.height,
+        cell.width,
+        cell.height,
+        cellData.offsetX,
+        cellData.offsetY,
+        cellData.zoom,
+      );
       ctx.drawImage(
         source.image,
         fit.sx,

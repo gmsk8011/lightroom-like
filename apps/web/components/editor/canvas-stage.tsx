@@ -5,6 +5,7 @@ import { useActivePhoto } from "@/stores/catalog-store";
 import { useUiStore } from "@/stores/ui-store";
 import { ImportControl } from "./import-control";
 import { PreviewCanvas } from "./preview-canvas";
+import { CollageCanvas } from "./collage/collage-canvas";
 
 function EmptyState() {
   return (
@@ -32,6 +33,15 @@ function EmptyState() {
 export function CanvasStage() {
   const photo = useActivePhoto();
   const showOriginal = useUiStore((s) => s.showOriginal);
+  const collageOpen = useUiStore((s) => s.collageOpen);
+
+  if (collageOpen) {
+    return (
+      <main className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-canvas p-4 sm:p-8">
+        {!photo ? <EmptyState /> : <CollageCanvas />}
+      </main>
+    );
+  }
 
   return (
     <main className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-canvas p-4 sm:p-8">

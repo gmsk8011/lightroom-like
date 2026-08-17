@@ -10,9 +10,9 @@ import {
   Rows3,
   SlidersHorizontal,
 } from "lucide-react";
-import { Button, cn, Segmented } from "@lrl/ui";
+import { Button, cn } from "@lrl/ui";
 import { DEFAULT_EXPORT_OPTIONS, type ExportFormat } from "@lrl/engine";
-import { useUiStore, type EditorMode } from "@/stores/ui-store";
+import { useUiStore } from "@/stores/ui-store";
 import { useCatalogStore, usePhotoCount } from "@/stores/catalog-store";
 import { useExportStore } from "@/stores/export-store";
 import { useCollageHasAnyPhoto } from "@/stores/collage-store";
@@ -20,18 +20,12 @@ import { exportCollage } from "@/lib/collage/export";
 import { ApplyToAllButton } from "./apply-to-all-button";
 import { ImportControl } from "./import-control";
 
-const MODE_OPTIONS: readonly { value: EditorMode; label: string }[] = [
-  { value: "edit", label: "Edit" },
-  { value: "collage", label: "Collage" },
-];
-
 export function TopBar() {
   const {
     leftOpen,
     rightOpen,
     filmstripOpen,
-    mode,
-    setMode,
+    collageOpen,
     toggleLeft,
     toggleRight,
     toggleFilmstrip,
@@ -94,15 +88,6 @@ export function TopBar() {
       )}
 
       {count > 0 && (
-        <Segmented
-          value={mode}
-          options={MODE_OPTIONS}
-          onChange={setMode}
-          columns={2}
-        />
-      )}
-
-      {count > 0 && (
         <Button
           size="sm"
           variant="ghost"
@@ -114,9 +99,9 @@ export function TopBar() {
         </Button>
       )}
 
-      {count > 0 && mode === "edit" && <ApplyToAllButton />}
+      {count > 0 && !collageOpen && <ApplyToAllButton />}
 
-      {mode === "edit" && (
+      {!collageOpen && (
         <Button
           size="sm"
           variant="ghost"
@@ -165,9 +150,9 @@ export function TopBar() {
         size="sm"
         variant="primary"
         className="gap-1.5"
-        disabled={mode === "collage" ? !collageHasPhoto || collageExporting : count === 0}
+        disabled={collageOpen ? !collageHasPhoto || collageExporting : count === 0}
         onClick={() => {
-          if (mode === "collage") {
+          if (collageOpen) {
             setCollageExporting(true);
             void exportCollage({
               ...DEFAULT_EXPORT_OPTIONS,
@@ -181,7 +166,7 @@ export function TopBar() {
       >
         <Download size={14} />
         <span className="hidden sm:inline">
-          {mode === "collage" && collageExporting ? "Exporting…" : "Export"}
+          {collageOpen && collageExporting ? "Exporting…" : "Export"}
         </span>
       </Button>
     </header>

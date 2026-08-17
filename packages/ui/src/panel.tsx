@@ -7,6 +7,12 @@ import { cn } from "./cn";
 export interface PanelProps {
   title: string;
   defaultOpen?: boolean;
+  /** Controlled open state — when provided, the panel no longer tracks its
+   *  own open/closed state internally, and `onOpenChange` becomes required
+   *  to actually toggle it. Lets a parent read (and drive) whether a
+   *  specific panel is expanded, e.g. to swap what the main canvas shows. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   actions?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
@@ -15,18 +21,27 @@ export interface PanelProps {
 export function Panel({
   title,
   defaultOpen = true,
+  open: controlledOpen,
+  onOpenChange,
   actions,
   children,
   className,
 }: PanelProps) {
-  const [open, setOpen] = React.useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = React.useState(defaultOpen);
+  const open = controlledOpen ?? internalOpen;
+
+  function toggle() {
+    const next = !open;
+    if (controlledOpen === undefined) setInternalOpen(next);
+    onOpenChange?.(next);
+  }
 
   return (
     <section className={cn("border-b border-line", className)}>
       <div className="flex items-center gap-1 pr-2">
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={toggle}
           aria-expanded={open}
           className={cn(
             "flex flex-1 items-center gap-1.5 px-3 py-2.5 text-left",

@@ -16,6 +16,15 @@ export const collageCellSchema = z.object({
    *  adjustments when placed in a cell — a collage cell has no crop/border/
    *  caption of its own, only a cover-fit crop to the cell's own aspect. */
   photoId: z.string().nullable(),
+  /** Pan within the cell's cover-fit crop, as percent of the room available
+   *  to move (-50..50, 0 = centred). Room to pan exists whenever the source
+   *  photo's aspect doesn't exactly match the cell's — cover-fit already
+   *  crops one axis, and this picks where within that crop to sit. */
+  offsetX: z.number().min(-50).max(50),
+  offsetY: z.number().min(-50).max(50),
+  /** 1 = plain cover-fit. Above 1 crops in tighter, which also opens up
+   *  more room to pan on whichever axis was previously unconstrained. */
+  zoom: z.number().min(1).max(3),
 });
 export type CollageCell = z.infer<typeof collageCellSchema>;
 

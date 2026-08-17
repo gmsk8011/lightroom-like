@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { collageCanvasSize, computeCollageLayout, coverFit } from "./layout";
+import {
+  collageCanvasSize,
+  computeCollageLayout,
+  coverFit,
+  coverFitTransform,
+} from "./layout";
 import { createDefaultCollage } from "./defaults";
 import type { Collage } from "./schema";
 
@@ -104,5 +109,50 @@ describe("coverFit", () => {
   it("crops nothing when source and target share an aspect ratio", () => {
     const fit = coverFit(1600, 900, 800, 450);
     expect(fit).toEqual({ sx: 0, sy: 0, sWidth: 1600, sHeight: 900 });
+  });
+});
+
+describe("coverFitTransform", () => {
+  it("matches plain coverFit at zoom 1 and zero offset", () => {
+    const base = coverFit(2000, 1000, 500, 500);
+    const transformed = coverFitTransform(2000, 1000, 500, 500, 0, 0, 1);
+    expect(transformed.sWidth).toBeCloseTo(base.sWidth, 5);
+    expect(transformed.sHeight).toBeCloseTo(base.sHeight, 5);
+    expect(transformed.sx).toBeCloseTo(base.sx, 5);
+    expect(transformed.sy).toBeCloseTo(base.sy, 5);
+  });
+
+  it("shrinks the crop window as zoom increases", () => {
+    const z1 = coverFitTransform(2000, 1000, 500, 500, 0, 0, 1);
+    const z2 = coverFitTransform(2000, 1000, 500, 500, 0, 0, 2);
+    expect(z2.sWidth).toBeCloseTo(z1.sWidth / 2, 5);
+    expect(z2.sHeight).toBeCloseTo(z1.sHeight / 2, 5);
+  });
+
+  it("pans within the available slack on the already-cropped axis", () => {
+    // 2000x1000 into a 500x500 (square) target crops horizontally at zoom 1,
+    // leaving real slack in X — panning should move sx without touching sy.
+    const left = coverFitTransform(2000, 1000, 500, 500, -50, 0, 1);
+    const right = coverFitTransform(2000, 1000, 500, 500, 50, 0, 1);
+    expect(left.sx).toBe(0);
+    expect(right.sx).toBeCloseTo(2000 - right.sWidth, 5);
+    expect(right.sx).toBeGreaterThan(left.sx);
+    expect(left.sy).toBe(right.sy);
+  });
+
+  it("has no slack to pan on an axis coverFit didn't crop", () => {
+    // Full height is already used at zoom 1 — vertical offset is a no-op.
+    const top = coverFitTransform(2000, 1000, 500, 500, 0, -50, 1);
+    const bottom = coverFitTransform(2000, 1000, 500, 500, 0, 50, 1);
+    expect(top.sy).toBe(0);
+    expect(bottom.sy).toBe(0);
+    expect(top.sHeight).toBe(1000);
+  });
+
+  it("clamps offsets to the valid range", () => {
+    const over = coverFitTransform(2000, 1000, 500, 500, 500, -500, 1);
+    const right = coverFitTransform(2000, 1000, 500, 500, 50, 0, 1);
+    expect(over.sx).toBeCloseTo(right.sx, 5);
+    expect(over.sy).toBe(0);
   });
 });
