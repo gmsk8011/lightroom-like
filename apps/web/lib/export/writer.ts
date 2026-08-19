@@ -1,9 +1,9 @@
-import { zip } from "fflate";
+import { downloadBlob } from "@/lib/collage/download";
 
 export const OUTPUT_DIRECTORY_NAME = "framer-export";
 
 export interface OutputWriter {
-  readonly kind: "directory" | "zip";
+  readonly kind: "directory" | "download";
   /** Where results end up, for display in the UI. */
   readonly destination: string;
   write(filename: string, blob: Blob): Promise<void>;
@@ -36,37 +36,30 @@ class DirectoryWriter implements OutputWriter {
 }
 
 /**
- * Fallback for browsers without the File System Access API. Everything is
- * held in memory until the archive is built, so this is only appropriate for
- * modest batches — the UI warns before using it on a large selection.
+ * Fallback for when there's no folder to write back into — either the
+ * browser lacks the File System Access API, or the photos came in as loose
+ * files rather than a folder, which leaves nothing to write back to.
+ *
+ * Each photo is handed to the browser as its own download the moment it
+ * finishes, so exports arrive as ordinary image files rather than an
+ * archive to unpack. Nothing accumulates in memory either — the previous
+ * implementation built a ZIP, which meant holding every exported photo at
+ * once purely to bundle them back up.
  */
-class ZipWriter implements OutputWriter {
-  readonly kind = "zip" as const;
-  readonly destination = `${OUTPUT_DIRECTORY_NAME}.zip`;
-  private readonly files: Record<string, Uint8Array> = {};
+class DownloadWriter implements OutputWriter {
+  readonly kind = "download" as const;
+  readonly destination = "your downloads";
 
   async write(filename: string, blob: Blob): Promise<void> {
-    this.files[filename] = new Uint8Array(await blob.arrayBuffer());
+    downloadBlob(blob, filename);
+    // Browsers rate-limit and can silently drop downloads fired back-to-back
+    // in the same tick. Writes are already serialized by the export runner,
+    // so a short pause here is all it takes to keep every file.
+    await new Promise((resolve) => setTimeout(resolve, 150));
   }
 
   async finish(): Promise<void> {
-    const archive = await new Promise<Uint8Array>((resolve, reject) => {
-      zip(this.files, { level: 0 }, (err, data) => {
-        if (err) reject(err);
-        else resolve(data);
-      });
-    });
-
-    // Level 0: the images are already compressed, so deflating them again
-    // costs time and saves nothing.
-    const url = URL.createObjectURL(
-      new Blob([archive as BlobPart], { type: "application/zip" }),
-    );
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = this.destination;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    // Nothing to do — every file was handed off as it finished.
   }
 }
 
@@ -86,7 +79,7 @@ export async function createWriter(
       );
     }
   }
-  return new ZipWriter();
+  return new DownloadWriter();
 }
 
 async function ensureWritePermission(

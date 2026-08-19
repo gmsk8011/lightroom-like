@@ -141,7 +141,7 @@ export function ExportDialog() {
                 <span>
                   {hasDirectory
                     ? "Saved to a new framer-export folder inside your photo folder. Originals are never modified."
-                    : "Your browser can't write to a folder, so exports download as a ZIP. Large batches may use a lot of memory."}
+                    : "There's no folder to write back to, so each photo downloads as its own file. Originals are never modified."}
                 </span>
               </div>
             </>

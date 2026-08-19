@@ -13,7 +13,6 @@
     "@lrl/engine": "*",
     "@lrl/ui": "*",
     "@tanstack/react-virtual": "^3.14.9",
-    "fflate": "^0.8.3",
     "idb": "^8.0.3",
     "next": "^16.3.1",
     "react": "^19.2.8",

@@ -8,13 +8,14 @@ export type { CollageCellInput as CollageCellSource };
 
 /**
  * Renders one collage document to a single Blob. Reuses one FilterRenderer
- * across every filtered cell — the same "expensive to create, cheap to
- * reuse" convention as ExportRenderer. The per-cell GPU-filter-then-
- * snapshot logic lives in resolveCollageSources(), shared with the live
- * preview canvas so the two draw paths can't silently diverge.
+ * and one set of scratch canvases across every cell — the same "expensive
+ * to create, cheap to reuse" convention as ExportRenderer. Each cell is put
+ * through the full single-photo pipeline by resolveCollageSources(), which
+ * the live preview canvas shares, so the two can't drift apart.
  */
 export class CollageExportRenderer {
   private readonly glCanvas = new OffscreenCanvas(1, 1);
+  private readonly frameCanvas = new OffscreenCanvas(1, 1);
   private readonly outCanvas = new OffscreenCanvas(1, 1);
   private renderer: FilterRenderer | null = null;
 
@@ -41,6 +42,7 @@ export class CollageExportRenderer {
       cells,
       () => this.ensureRenderer(),
       this.glCanvas,
+      this.frameCanvas,
     );
 
     try {

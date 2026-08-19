@@ -42,7 +42,7 @@ export async function exportCollage(options: ExportOptions): Promise<void> {
       const file = await readPhotoFile(photo);
       const bitmap = await createImageBitmap(file);
       bitmaps.push(bitmap);
-      cells.push({ bitmap, filters: recipes.get(photo.id).filters });
+      cells.push({ bitmap, recipe: recipes.get(photo.id) });
     }
 
     const { width, height } = collageCanvasSize(

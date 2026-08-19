@@ -6,7 +6,7 @@ import {
   collageCanvasSize,
   computeCollageLayout,
   coverFit,
-  DEFAULT_FILTERS,
+  createDefaultRecipe,
   FilterRenderer,
   renderCollage,
   resolveCollageSources,
@@ -70,6 +70,7 @@ export function CollageCanvas() {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const glCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const frameCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const rendererRef = React.useRef<FilterRenderer | null>(null);
   const drawIdRef = React.useRef(0);
   const dragRef = React.useRef<DragState | null>(null);
@@ -103,12 +104,17 @@ export function CollageCanvas() {
   React.useEffect(() => {
     const glCanvas = document.createElement("canvas");
     glCanvasRef.current = glCanvas;
+    // Scratch canvas composite() draws each finished cell into before it's
+    // snapshotted — it resizes and clears whatever canvas it's handed, so
+    // it can't share the collage's own visible canvas.
+    frameCanvasRef.current = document.createElement("canvas");
     const renderer = FilterRenderer.create(glCanvas);
     rendererRef.current = renderer;
     return () => {
       renderer?.dispose();
       rendererRef.current = null;
       glCanvasRef.current = null;
+      frameCanvasRef.current = null;
       collageBitmaps.clear();
     };
   }, []);
@@ -131,8 +137,9 @@ export function CollageCanvas() {
   React.useEffect(() => {
     const renderer = rendererRef.current;
     const glCanvas = glCanvasRef.current;
+    const frameCanvas = frameCanvasRef.current;
     const canvas = canvasRef.current;
-    if (!renderer || !glCanvas || !canvas) return;
+    if (!renderer || !glCanvas || !frameCanvas || !canvas) return;
     if (box.width === 0 || box.height === 0) return;
 
     const myId = ++drawIdRef.current;
@@ -152,18 +159,15 @@ export function CollageCanvas() {
       const canvasHeight = Math.max(1, Math.round(displayHeight * dpr));
 
       const cellInputs: (CollageCellInput | null)[] = [];
-      const sourceDims: ({ width: number; height: number } | null)[] = [];
       const referencedIds = new Set<string>();
       for (const cell of collage.cells) {
         if (!cell.photoId) {
           cellInputs.push(null);
-          sourceDims.push(null);
           continue;
         }
         const photo = byId[cell.photoId];
         if (!photo) {
           cellInputs.push(null);
-          sourceDims.push(null);
           continue;
         }
         referencedIds.add(photo.id);
@@ -171,11 +175,9 @@ export function CollageCanvas() {
         if (myId !== drawIdRef.current) return;
         cellInputs.push({
           bitmap,
-          filters: recipes[photo.id]?.filters ?? DEFAULT_FILTERS,
+          recipe: recipes[photo.id] ?? createDefaultRecipe(),
         });
-        sourceDims.push({ width: bitmap.width, height: bitmap.height });
       }
-      setCellSourceDims(sourceDims);
 
       collageBitmaps.pruneExcept(referencedIds);
 
@@ -183,6 +185,7 @@ export function CollageCanvas() {
         cellInputs,
         () => renderer,
         glCanvas,
+        frameCanvas,
       );
       if (myId !== drawIdRef.current) {
         for (const snapshot of snapshots) snapshot.close();
@@ -196,6 +199,15 @@ export function CollageCanvas() {
       }
 
       renderCollage({ ctx, collage, canvasWidth, canvasHeight, sources });
+
+      // The pan/zoom gesture converts pixel deltas against whatever actually
+      // got drawn — which is the composited photo (border and captions
+      // included), not the raw bitmap, so its dimensions are what the drag
+      // math has to use.
+      setCellSourceDims(
+        sources.map((s) => (s ? { width: s.width, height: s.height } : null)),
+      );
+
       for (const snapshot of snapshots) snapshot.close();
 
       canvas.style.width = `${Math.round(displayWidth)}px`;
