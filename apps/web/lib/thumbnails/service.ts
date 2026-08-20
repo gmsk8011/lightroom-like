@@ -4,7 +4,7 @@ import { readThumbnail, writeThumbnail } from "./cache";
 import type {
   ThumbnailRequest,
   ThumbnailResponse,
-} from "@/lib/workers/thumbnail.worker";
+} from "@/lib/workers/thumbnail-types";
 
 export const THUMB_WIDTH = 420;
 
@@ -44,10 +44,9 @@ class ThumbnailService {
     this.started = true;
 
     for (let i = 0; i < this.poolSize; i += 1) {
-      const worker = new Worker(
-        new URL("@/lib/workers/thumbnail.worker.ts", import.meta.url),
-        { type: "module" },
-      );
+      // A plain classic worker served straight from public/, not a bundled
+      // TS module — see thumbnail-worker.js's own header comment for why.
+      const worker = new Worker("/thumbnail-worker.js");
       worker.onmessage = (e: MessageEvent<ThumbnailResponse>) =>
         this.onWorkerMessage(worker, e.data);
       worker.onerror = () => this.onWorkerFailure(worker, "Worker crashed");
